@@ -1187,13 +1187,13 @@ def main():
         # Número da Dex do Pokémon alvo, único parametro não opcional
         target_dex="395",
         # Tamanho padrão da população
-        pop_size=60,
+        pop_size=20,
         # Chance de acontecer mutação pra cada membro da nova geração (ignora elitismo)
         mutation_rate=0.033333,
         # Porcentagem da população a ser povoada por crossover
-        crossover_rate=0.667,
+        crossover_rate=0.8,
         # Geração máxima
-        max_gen=200, 
+        max_gen=1200, 
         # Regulação automatica dos valores crossover_rate, mutation_rate e elitism_rate.
         auto_reg=True,
         # Se a regulação automática, quando ativada, deveria alterar o tamanho da população
@@ -1207,9 +1207,9 @@ def main():
         # Se a regulação automática deveria moldar seus parâmetros como ondas ao invés de linearmente
         wavering_param=True,
         # Porcentagem da população a ser preenchida por elitismo
-        elitism_rate=0.12,
+        elitism_rate=0.05,
         # Tipo de crossover
-        crossover_type='chaotic_smart',
+        crossover_type='chaotic_dumb',
         # Tipo de fitness a seguir
         fitness_type='normalize',
         # Salva imagens de todas as populações geradas em 'runs'
