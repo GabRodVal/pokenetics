@@ -248,12 +248,12 @@ class PokeGenetics():
         # also implement realistic_shiny -> True for randint(0, 8192) or False for randint(1, 100) or custom'
         
         if self.easy_shiny and randint(1, 10) == 1:
-            img_arch = np.array(Image.open(f'sprites\\{self.pokedex[dex]["sprite_shiny"]}').convert("RGBA"), dtype=np.uint8)
+            img_arch = np.array(Image.open(f'sprites\\{dex}_s.png').convert("RGBA"), dtype=np.uint8)
         elif randint(1, 8192) == 1:
             print(f'------- A wild {dex} - {(self.pokedex[dex]["name"]).capitalize()} has appeared at Gen N°{self.cur_gen}. It\'s Shiny! -------')
-            img_arch = np.array(Image.open(f'sprites\\{self.pokedex[dex]["sprite_shiny"]}').convert("RGBA"), dtype=np.uint8)
+            img_arch = np.array(Image.open(f'sprites\\{dex}_s.png').convert("RGBA"), dtype=np.uint8)
         else:
-            img_arch = np.array(Image.open(f'sprites\\{self.pokedex[dex]["sprite"]}').convert("RGBA"), dtype=np.uint8)
+            img_arch = np.array(Image.open(f'sprites\\{dex}.png').convert("RGBA"), dtype=np.uint8)
         
         if img_arch.shape != (96,96,4):
             if debug:  print(f'uouies: {dex} - {img_arch.shape}')
