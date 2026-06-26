@@ -7,9 +7,9 @@ from PIL import Image, ImageFile, ImageOps
     
     
 def to_grayscale(img):
-    mask = img[:,:,3] == 0
+    #mask = img[:,:,3] == 0
     #img[mask] = [255,255,255,255]
-    img[mask] = [0,255,0,255]
+    #img[mask] = [0,255,0,255]
     temp_img = Image.fromarray(img)
     temp_img = temp_img.convert("RGB")
     new_img = ImageOps.grayscale(temp_img)

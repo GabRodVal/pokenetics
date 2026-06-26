@@ -71,7 +71,7 @@ class Crossover():
                     elif img_a[j][k][3] == 0 and img_b[j][k][3] != 0:
                         child_a[j][k] = img_b[j][k]
                     elif img_b[j][k][3] == 0 and img_a[j][k][3] != 0:
-                        child_b[j][k] = img_a[j][k].fo
+                        child_b[j][k] = img_a[j][k]
                     else:
                         for l in range (0, 3):
                             child_a[j][k][l] = math.floor(img_a[j][k][l] * op_con) + math.ceil(img_b[j][k][l] * (1 - op_con))

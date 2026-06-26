@@ -394,15 +394,15 @@ class PokeGenetics():
 def main():
     poke_gen = PokeGenetics(
         # Número da Dex do Pokémon alvo, único parametro não opcional
-        target_dex="249",
+        target_dex="151",
         # Tamanho padrão da população
-        pop_size=50,
+        pop_size=100,
         # Chance de acontecer mutação pra cada membro da nova geração (ignora elitismo)
         mutation_rate=0.034,
         # Porcentagem da população a ser povoada por crossover
         crossover_rate=0.64,
         # Geração máxima
-        max_gen=3000, 
+        max_gen=1000, 
         # Tipo de avaliação usada (atualmente RGBA e Grayscale)
         score_type='Grayscale',
         # Regulação automatica dos valores crossover_rate, mutation_rate e elitism_rate.
@@ -414,7 +414,7 @@ def main():
         # Se os melhores da geração passada deveriam ser transferidos para a nova geração
         elitism=True,
         # Habilita a chance de elitismo acontecer com Pokémon inseridos por elitismo
-        elitism_mutation=False,
+        elitism_mutation=True,
         # Porcentagem da população a ser preenchida por elitismo
         elitism_rate=0.05,
         # Tipo de crossover
@@ -424,7 +424,7 @@ def main():
         # Salva imagens de todas as populações geradas em 'runs'
         save_all_imgs=True,
         # Faz shinys serem faceis de achar
-        easy_shiny=False
+        easy_shiny=True
         )
     
     poke_gen.run()
