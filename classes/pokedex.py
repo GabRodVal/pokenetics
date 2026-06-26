@@ -1,5 +1,6 @@
 from random import randint, choices, sample, uniform, seed
 import numpy as np
+import classes.utils as utils
 from PIL import Image
 import json
 import cv2
@@ -7,7 +8,7 @@ import cv2
 debug = False
 
 class Pokedex():
-    def __init__(self, target_dex, easy_shiny=False):
+    def __init__(self, target_dex, score_type='RGBA', easy_shiny=False):
 
         with open('poke_sprite_data.json') as poke_data:
             pokeJSON = json.load(poke_data)
@@ -20,9 +21,15 @@ class Pokedex():
         self.easy_shiny = easy_shiny
 
         target_image = self.load_pokepng(target_dex)
-        #if True:
-        self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (96*96*(255*3)) ]
-
+        self.score_type = score_type
+        print(score_type)
+        if self.score_type == 'RGBA':
+            self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (96*96*(255*3)) ]
+        elif self.score_type == 'Grayscale':
+            self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (96*96*(255)) ]
+        else:
+            print(self.score_type == 'Greyscale')
+            self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (96*96*(255*3)) ]
         self.banned_mon = []
         self.banned_mon.append(self.target_mon)
         self.pokedex_keys.remove(target_dex)
@@ -94,6 +101,19 @@ class Pokedex():
                     #for l in range (0, 4):
                     for l in range (0, 3):
                         score += np.int32(255 - abs(np.int32(ref_mon[2][j][k][l]) - acc_mon[0][j][k][l]))
+            
+        return score
+    
+
+    def aval_target_grayscale(self, ref_mon, acc_mon):
+        score = np.int32(0)
+
+        ref_grey = utils.to_grayscale(ref_mon[2])
+        acc_grey = utils.to_grayscale(acc_mon[0])
+
+        for j in range(0, 96):
+            for k in range(0, 96):
+                score += np.int32(255 - abs(np.int32(ref_grey[j][k]) - acc_grey[j][k]))
             
         return score
 

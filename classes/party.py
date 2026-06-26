@@ -20,6 +20,7 @@ class Party():
             mutation_rate=0.02,
             elitism_rate=0.08,
             max_gen=24,
+            score_type='RGBA',
             auto_regulate=True,
             reg_pop=False,
             regulate_type='wave',
@@ -31,8 +32,10 @@ class Party():
             save_all_imgs=True
             ):
         
+        self.score_type = score_type
+
         # Pokedex
-        self.pokedex = pokedex.Pokedex(target_dex=target_dex, easy_shiny=easy_shiny)
+        self.pokedex = pokedex.Pokedex(target_dex=target_dex, easy_shiny=easy_shiny, score_type=self.score_type)
 
         self.target_dex = target_dex
         self.target_mon = self.pokedex.get_target_pokemon()
@@ -47,6 +50,7 @@ class Party():
         self.fit_team = []
 
         self.base_dir = ''
+        
         #
         self.og_pop_size = pop_size
         self.pop_size = pop_size
@@ -236,10 +240,12 @@ class Party():
                     self.team.append([self.pokedex.get_another_pokemon(dk), 0])
                 
     def score_party(self):
-        if True:
+        if self.score_type == 'RGBA':
             for it in range(len(self.team)):
                 self.team[it][1] = self.pokedex.aval_target(self.target_mon, self.team[it])
-                
+        elif self.score_type == 'Grayscale':
+            for it in range(len(self.team)):
+                self.team[it][1] = self.pokedex.aval_target_grayscale(self.target_mon, self.team[it])
                 
         #fit_team = self.fitness.get_team_fitness_score(self.team)
         #self.team = fit_team

@@ -77,6 +77,7 @@ class PokeGenetics():
             mutation_rate=0.02,
             crossover_rate=0.72,
             max_gen=25,
+            score_type='RGBA',
             auto_reg=False,
             reg_pop=False,
             elitism=True,
@@ -100,6 +101,7 @@ class PokeGenetics():
             elitism=elitism,
             elitism_rate=elitism_rate,
             max_gen=max_gen,
+            score_type=score_type,
             reg_pop=reg_pop,
             elitism_mutation=elitism_mutation,
             auto_regulate=auto_reg,
@@ -135,6 +137,7 @@ class PokeGenetics():
         self.elitism_mutation = elitism_mutation
         self.fitness_type = fitness_type
         self.elitism_rate = elitism_rate
+        self.score_type = score_type
         self.regulate_type=regulate_type
         self.auto_regulate = auto_reg
 
@@ -399,7 +402,9 @@ def main():
         # Porcentagem da população a ser povoada por crossover
         crossover_rate=0.64,
         # Geração máxima
-        max_gen=200, 
+        max_gen=3000, 
+        # Tipo de avaliação usada (atualmente RGBA e Grayscale)
+        score_type='Grayscale',
         # Regulação automatica dos valores crossover_rate, mutation_rate e elitism_rate.
         auto_reg=True,
         # Tipo de regulação automatica, entre Standard, Wave, Chaotic e None
@@ -413,7 +418,7 @@ def main():
         # Porcentagem da população a ser preenchida por elitismo
         elitism_rate=0.05,
         # Tipo de crossover
-        crossover_type=['bisect', 'swap_simple', 'swap_sensible', 'swap_serial', 'swap_colors'],
+        crossover_type=['mesh_essential', 'bisect', 'swap_simple', 'swap_serial', 'swap_colors', 'swap_even'],
         # Tipo de fitness a seguir
         fitness_type='normalize',
         # Salva imagens de todas as populações geradas em 'runs'
