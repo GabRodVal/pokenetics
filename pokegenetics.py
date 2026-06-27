@@ -107,6 +107,7 @@ class PokeGenetics():
             auto_regulate=auto_reg,
             regulate_type=regulate_type,
             fitness_type=fitness_type,
+            save_all_imgs=save_all_imgs
             )
 
         self.generation = generation
@@ -118,7 +119,7 @@ class PokeGenetics():
         self.pop_values = []
         self.elt_values = []
         self.time_values = []
-        #self.fitness_values = []
+        self.fitness_values = []
         self.score_values = []
         self.first_stamp = 0
         self.old_stamp = 0
@@ -182,8 +183,7 @@ class PokeGenetics():
                     print(f'\033[93m{self.cur_gen:03d}° Gen - Resultado: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% ({((self.cur_score/target_mon[3]) * 100):.3f}%) | {(self.cur_score)}pts (={(abs(self.cur_score - self.old_score)):06d}pts) -> ({((self.cur_score - self.first_score))}pts) | {(self.cur_stamp - self.old_stamp):.1f}s -> {(self.cur_stamp - self.first_stamp):.1f}s')
 
         if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - CoR: {stats[1] * 100:.2f}% | Mut: {stats[2] * 100:.2f}% | Elt: {stats[3] * 100:.2f}% | Pop: {stats[0]}\033[0m')
-        self.h_scores.append(((self.cur_score/target_mon[3]) * 100))
-
+        self.h_scores.append(((self.cur_score/target_mon[3]) * 100))        
         if self.cur_gen == 1:
             self.first_score = self.cur_score
         else:
@@ -195,6 +195,7 @@ class PokeGenetics():
         self.cross_values.append(stats[1] * 100)
         self.mut_values.append(stats[2] * 100)
         self.elt_values.append(stats[3] * 100)
+        self.fitness_values.append(stats[4])
         self.time_values.append(self.cur_stamp - self.old_stamp)
         self.old_stamp = self.cur_stamp
         #self.fitness_values.append(self.fitness_rate)
@@ -277,9 +278,9 @@ class PokeGenetics():
         elt_fig.grid()
         elt_fig.plot(self.elt_values, '#36a4bc', label='elt_rate', linewidth=0.8)
 
-        #fit_fig.set_title(f"Max Fitness - Avg {mean(self.fitness_values):.1f}")
-        #fit_fig.grid()
-        #fit_fig.plot(self.fitness_values, '#a64d79', label='max_fitness', linewidth=0.8)
+        fit_fig.set_title(f"Max Fitness - Avg {mean(self.fitness_values):.1f}")
+        fit_fig.grid()
+        fit_fig.plot(self.fitness_values, '#a64d79', label='max_fitness', linewidth=0.8)
 
         mut_fig.set_title(f"Mutation Rate - Avg {mean(self.mut_values):.2f}%")
         mut_fig.grid()
@@ -319,7 +320,7 @@ class PokeGenetics():
         self.old_stamp = self.first_stamp
         target_mon = self.party.get_target_pokemon()
 
-        self.base_dir = f'runs/{str(self.first_stamp).replace('.','')}-{target_mon[1]}-p{self.pop_size}-g{self.max_gen}'
+        self.base_dir = f'runs/{str(self.first_stamp)[:2]}-{str(self.first_stamp)[-8:]}-{target_mon[1]}-{self.score_type}-p{self.pop_size}-g{self.max_gen}'
         self.party.set_base_dir(self.base_dir)
 
         self.create_dir(cur_dir=self.base_dir)
@@ -345,9 +346,8 @@ class PokeGenetics():
             self.party.populate_new_gen()
             self.party.score_party()
             self.cur_gen = self.party.get_cur_gen()
-            
             self.register_stats()
-
+            
 
             if self.auto_regulate:
                 self.party.regulate_self()
@@ -394,7 +394,7 @@ class PokeGenetics():
 def main():
     poke_gen = PokeGenetics(
         # Número da Dex do Pokémon alvo, único parametro não opcional
-        target_dex="144",
+        target_dex="158",
         # Qual set de sprites será utilizado, atualmente apenas 1 -> (56x56, 151 sprites) e 9-> (96x96, 1100+ sprites)
         generation=2,
         # Tamanho padrão da população
@@ -404,10 +404,11 @@ def main():
         # Porcentagem da população a ser povoada por crossover
         crossover_rate=0.60,
         # Geração máxima
-        max_gen=2000, 
+        max_gen=1000, 
         # Tipo de avaliação usada (atualmente RGBA e Grayscale)
         score_type='RGBA',
         #score_type='Grayscale',
+        #score_type='Binary',
         # Regulação automatica dos valores crossover_rate, mutation_rate e elitism_rate.
         auto_reg=True,
         # Tipo de regulação automatica, entre Standard, Wave, Chaotic e None
@@ -417,12 +418,13 @@ def main():
         # Se os melhores da geração passada deveriam ser transferidos para a nova geração
         elitism=True,
         # Habilita a chance de elitismo acontecer com Pokémon inseridos por elitismo
-        elitism_mutation=True,
+        elitism_mutation=False,
         # Porcentagem da população a ser preenchida por elitismo
         elitism_rate=0.05,
         # Tipo de crossover
-        #crossover_type=['mesh_essential', 'bisect', 'swap_simple', 'swap_serial', 'swap_colors', 'swap_even'],
-        crossover_type=['mesh_essential', 'bisect', 'swap_serial', 'swap_colors', 'swap_even'],
+        #crossover_type=['swap_channels'],
+        crossover_type=['mesh_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even'],
+        #crossover_type=['mesh_essential', 'bisect', 'multisect', 'swap_serial', 'swap_colors','swap_channels', 'swap_even'],
         # Tipo de fitness a seguir
         fitness_type='normalize',
         # Salva imagens de todas as populações geradas em 'runs'
@@ -450,6 +452,5 @@ def main():
 
 if __name__ == '__main__':
 
-    [(50, 500), (100,250), (250, 100), (500, 50)]
-    [(False, False, False),(True, False, False), (True, True, False), (True, True, True)]
+    ['RGBA', 'Grayscale', 'Binary']
     main()

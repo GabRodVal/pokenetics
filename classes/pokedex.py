@@ -31,7 +31,6 @@ class Pokedex():
                 pokeJSON = json.load(poke_data)
                 poke_data.close()
         else:
-            print('SUJOU')
             self.dim = (96, 96, 4)
             with open('poke_sprite_data.json') as poke_data:
                 pokeJSON = json.load(poke_data)
@@ -51,6 +50,8 @@ class Pokedex():
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255*3)) ]
         elif self.score_type == 'Grayscale':
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255)) ]
+        elif self.score_type == 'Binary':
+            self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(1)) ]
         else:
             print(self.score_type == 'RGBA')
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255*3)) ]
@@ -145,14 +146,49 @@ class Pokedex():
 
         for j in range(0, len(ref_mon[2])):
             for k in range(0, len(ref_mon[2])):
-                ref_mean = int((np.int32(ref_mon[2][j][k][0]) + np.int32(ref_mon[2][j][k][1]) + np.int32(ref_mon[2][j][k][2]))/3)
-                acc_mean = int((np.int32(acc_mon[0][j][k][0]) + np.int32(acc_mon[0][j][k][1]) + np.int32(acc_mon[0][j][k][2]))/3)
+                if ref_mon[2][j][k][3] != acc_mon[0][j][k][3]:
+                    continue
+                elif ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 0:
+                    score += 255
+                else:
+                    ref_mean = int((np.int32(ref_mon[2][j][k][0]) + np.int32(ref_mon[2][j][k][1]) + np.int32(ref_mon[2][j][k][2]))/3)
+                    acc_mean = int((np.int32(acc_mon[0][j][k][0]) + np.int32(acc_mon[0][j][k][1]) + np.int32(acc_mon[0][j][k][2]))/3)
+                    
+                    #print(np.int32(255 - abs(ref_mean - acc_mean)))
+                    score += np.int32(255 - abs(ref_mean - acc_mean))
                 
-                #print(np.int32(255 - abs(ref_mean - acc_mean)))
-                score += np.int32(255 - abs(ref_mean - acc_mean))
-            
-                #print(f'{len(ref_mon)}-{len(ref_mon[2])}-{len(ref_mon[2])}')
-                #print(f'{len(acc_mon)}-{len(acc_mon[0])}-{len(acc_mon)}')
+                    #print(f'{len(ref_mon)}-{len(ref_mon[2])}-{len(ref_mon[2])}')
+                    #print(f'{len(acc_mon)}-{len(acc_mon[0])}-{len(acc_mon)}')
+        return score
+    
+    def aval_target_binary(self, ref_mon, acc_mon):
+        score = np.int32(0)
+
+        '''ref_grey = utils.to_grayscale(ref_mon[2])
+        acc_grey = utils.to_grayscale(acc_mon[0])
+
+        for j in range(0, 96):
+            for k in range(0, 96):
+                score += np.int32(255 - abs(np.int32(ref_grey[j][k]) - acc_grey[j][k]))'''
+
+        for j in range(0, len(ref_mon[2])):
+            for k in range(0, len(ref_mon[2])):
+                if ref_mon[2][j][k][3] != acc_mon[0][j][k][3]:
+                    continue
+                elif ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 0:
+                    score += 1
+                else:
+                    ref_mean = int((np.int32(ref_mon[2][j][k][0]) + np.int32(ref_mon[2][j][k][1]) + np.int32(ref_mon[2][j][k][2]))/3)
+                    acc_mean = int((np.int32(acc_mon[0][j][k][0]) + np.int32(acc_mon[0][j][k][1]) + np.int32(acc_mon[0][j][k][2]))/3)
+
+                    ref_bin = (ref_mean >= 128) * 1
+                    acc_bin = (acc_mean >= 128) * 1
+                    
+                    #print(np.int32(255 - abs(ref_mean - acc_mean)))
+                    score += (1 - abs(ref_bin - acc_bin))
+                
+                    #print(f'{len(ref_mon)}-{len(ref_mon[2])}-{len(ref_mon[2])}')
+                    #print(f'{len(acc_mon)}-{len(acc_mon[0])}-{len(acc_mon)}')
         return score
 
     ##########################################

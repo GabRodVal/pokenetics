@@ -103,9 +103,6 @@ class Crossover():
                 if pix:
                     child_a[j][k] = np.copy(img_b[j][k])
                     child_b[j][k] = np.copy(img_a[j][k])
-                #else:
-                #    child_a[j][k] = np.copy(img_b[j][k])
-                #    child_b[j][k] = np.copy(img_a[j][k])
 
         return child_a, child_b
 
@@ -154,15 +151,44 @@ class Crossover():
             #h_cut = 0
             #v_cut = 0
             if randint(0,1):
-                v_cut = randint(15, 83)
+                v_cut = randint(int(img_a.shape[0]*0.2), int(img_a.shape[0]*0.8))
                 child_a = np.vstack((img_a[:v_cut], img_b[v_cut:]))
                 child_b = np.vstack((img_b[:v_cut], img_a[v_cut:]))
             else:
-                h_cut = randint(15, 83)
+                h_cut =  randint(int(img_a.shape[1]*0.2), int(img_a.shape[1]*0.8))
                 child_a = np.hstack((img_a[:, :h_cut], img_b[:, h_cut:]))
                 child_b = np.hstack((img_b[:, :h_cut], img_a[:, h_cut:]))
 
+        return child_a, child_b
+    
+    # multisect
+    def crossover_multisect(self, img_a, img_b):
+        if img_a.shape != img_b.shape:
+            img_b = np.resize(img_b, img_a.shape)
+
+        if randint(0,1) or img_a.shape[0] % 2 != 0 or img_a.shape[1]  % 2 != 0:
+            if randint(0,1):
+                v_half = img_a.shape[0] // 2
+                child_a = np.vstack((img_a[:v_half], img_b[v_half:]))
+                child_b = np.vstack((img_b[:v_half], img_a[v_half:]))
+            else:
+                h_half = img_a.shape[1] // 2
+                child_a = np.hstack((img_a[:, :h_half], img_b[:, h_half:]))
+                child_b = np.hstack((img_b[:, :h_half], img_a[:, h_half:]))
+        else:
             #print(f'Child A:{child_a.shape} --- Child B:{child_b.shape}  --- h_cut:{h_cut}/{95 - h_cut} --- v_cut:{v_cut}/{95 - v_cut}')
+            if randint(0,1):
+                v_half = img_a.shape[0] // 2
+                p_a, p_b = self.crossover_multisect(img_a[:v_half].copy(), img_b[v_half:].copy())
+                child_a = np.vstack((p_a, p_b))
+                p_a, p_b = self.crossover_multisect(img_b[:v_half].copy(), img_a[v_half:].copy())
+                child_b = np.vstack((p_a, p_b))
+            else:
+                h_half = img_a.shape[1] // 2
+                p_a, p_b = self.crossover_multisect(img_a[:,:h_half].copy(), img_b[:,h_half:].copy())
+                child_a = np.hstack((p_a, p_b))
+                p_a, p_b = self.crossover_multisect(img_b[:,:h_half].copy(), img_a[:,h_half:].copy())
+                child_b = np.hstack((p_a, p_b))
 
         return child_a, child_b
 
@@ -248,6 +274,34 @@ class Crossover():
 
         return child_a, child_b
     
+    def crossover_swap_channels(self, img_a, img_b):
+        child_a = np.copy(img_a)
+        child_b = np.copy(img_b)
+
+        mask_r = img_a[:,:,0]
+        mask_g = img_a[:,:,1]
+        mask_b = img_a[:,:,2]
+        mask_a = img_a[:,:,3]
+
+        chnl = randint(0,5)
+        match chnl:
+            case 0:
+                child_a[:,:,0] = img_b[:,:,0].copy()
+                child_b[:,:,0] = img_a[:,:,0].copy()
+                #child_a[mask_r] = np.copy(img_b[mask_r])
+                #child_b[mask_r] = np.copy(img_a[mask_r])
+            case 1:
+                child_a[:,:,1] = img_b[:,:,1].copy()
+                child_b[:,:,1] = img_a[:,:,1].copy()
+            case 2:
+                child_a[:,:,2] = img_b[:,:,2].copy()
+                child_b[:,:,2] = img_a[:,:,2].copy()
+            case _:
+                child_a[:,:,3] = img_b[:,:,3].copy()
+                child_b[:,:,3] = img_a[:,:,3].copy()
+
+        return child_a, child_b
+
     #def mesh crossover_mesh_colors(self, img_a, img_b):
     #   pass
 
@@ -290,12 +344,21 @@ class Crossover():
                 c_a, c_b = self.crossover_swap_sensible(img_a, img_b)
             case 'bisect':
                 c_a, c_b  = self.crossover_bisect(img_a, img_b)
+            case 'multisect':
+                c_a, c_b  = self.crossover_multisect(img_a, img_b)
+                if c_a.shape[0] != img_a.shape[0]: print(f'!!!{img_a.shape[0]}!!!')
+                if c_a.shape[1] != img_a.shape[0]: print(f'!!!{c_a.shape[1]}!!!')
+
             case 'swap_even':
                 c_a, c_b = self.crossover_swap_even(img_a, img_b)
             case 'swap_colors':
                 c_a, c_b = self.crossover_swap_colors(img_a, img_b)
+            case 'swap_channels':
+                c_a, c_b = self.crossover_swap_channels(img_a, img_b)
             case _:
-                c_a, c_b = self.crossover_swap_pixels(img_a, img_b)
+                print('uh-oh, crossover invalido')
+                c_a = img_a.copy()
+                c_b = img_b.copy()
 
 
         return c_a, c_b
