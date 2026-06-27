@@ -64,8 +64,8 @@ class Crossover():
 
         op_con = uniform(0.125, 0.875)
 
-        for j in range(0, 96):
-            for k in range(0, 96):
+        for j in range(0, img_a.shape[0]):
+            for k in range(0, img_a.shape[1]):
                     if np.array_equal(img_a[j][k], img_b[j][k]):
                         continue
                     elif img_a[j][k][3] == 0 and img_b[j][k][3] != 0:
@@ -73,9 +73,13 @@ class Crossover():
                     elif img_b[j][k][3] == 0 and img_a[j][k][3] != 0:
                         child_b[j][k] = img_a[j][k]
                     else:
-                        for l in range (0, 3):
-                            child_a[j][k][l] = math.floor(img_a[j][k][l] * op_con) + math.ceil(img_b[j][k][l] * (1 - op_con))
-                            child_b[j][k][l] = math.floor(img_b[j][k][l] * op_con) + math.ceil(img_a[j][k][l] * (1 - op_con))
+                        #for l in range (0, 3):
+                        #    child_a[j][k][l] = math.floor(img_a[j][k][l] * op_con) + math.ceil(img_b[j][k][l] * (1 - op_con))
+                        #    child_b[j][k][l] = math.floor(img_b[j][k][l] * op_con) + math.ceil(img_a[j][k][l] * (1 - op_con))
+                        #child_a[j][k] = math.floor(np.multiply(img_a[j][k], op_con)) + math.ceil(np.multiply(img_b[j][k], 1-op_con))
+                        #child_b[j][k] = math.floor(np.multiply(img_b[j][k], op_con)) + math.ceil(np.multiply(img_a[j][k], 1-op_con))
+                        child_a[j][k] = np.ceil(np.add(np.multiply(img_a[j][k], op_con), np.multiply(img_b[j][k], 1-op_con)))
+                        child_b[j][k] = np.ceil(np.add(np.multiply(img_b[j][k], op_con), np.multiply(img_a[j][k], 1-op_con)))
 
         return child_a, child_b
     
@@ -93,8 +97,8 @@ class Crossover():
         child_a = np.copy(img_a)
         child_b = np.copy(img_b)
 
-        for j in range(0, 96):
-            for k in range(0, 96):
+        for j in range(0, img_a.shape[0]):
+            for k in range(0, img_a.shape[1]):
                 pix = randint(0,1)
                 if pix:
                     child_a[j][k] = np.copy(img_b[j][k])
@@ -110,9 +114,9 @@ class Crossover():
         child_b = np.copy(img_b)
 
         swap = randint(0,1)
-        swap_avg = (96*4)
-        for j in range(0, 96):
-            for k in range(0, 96):
+        swap_avg = math.floor(img_a.shape[0]*(img_a.shape[0]*0.1))
+        for j in range(0, img_a.shape[0]):
+            for k in range(0, img_a.shape[1]):
                 if (randint(0, swap_avg)/swap_avg) <= 0.086:
                     swap = not(swap)
                 if swap:
@@ -125,8 +129,8 @@ class Crossover():
         child_a = np.copy(img_a)
         child_b = np.copy(img_b)
 
-        for j in range(0, 96):
-            for k in range(0, 96):
+        for j in range(0, img_a.shape[0]):
+            for k in range(0, img_a.shape[1]):
                 close_a = ((abs(np.int32(self.target_mon[2][j][k][0]) - np.int32(img_a[j][k][0])) + abs(np.int32(self.target_mon[2][j][k][1]) - np.int32(img_a[j][k][1])) + abs(np.int32(self.target_mon[2][j][k][2]) - np.int32(img_a[j][k][2])) + abs(np.int32(self.target_mon[2][j][k][3]) - np.int32(img_a[j][k][3]))) < (abs(np.int32(self.target_mon[2][j][k][0]) - np.int32(img_b[j][k][0])) + abs(np.int32(self.target_mon[2][j][k][1]) - np.int32(img_b[j][k][1])) + abs(np.int32(self.target_mon[2][j][k][2]) - np.int32(img_b[j][k][2])) + abs(np.int32(self.target_mon[2][j][k][3]) - np.int32(img_b[j][k][3]))))
                 if not(close_a):
                     child_a[j][k] = np.copy(img_b[j][k])
@@ -168,8 +172,8 @@ class Crossover():
         v_slice = randint(0,1)
         swap = False
 
-        for j in range(0, 96):
-            for k in range(0, 96):
+        for j in range(0, img_a.shape[0]):
+            for k in range(0, img_a.shape[1]):
                 if v_slice:
                     if swap:
                         child_a[j][k] = np.copy(img_a[j][k])
@@ -228,8 +232,8 @@ class Crossover():
 
         rev_color_eq = {v: k for k, v in color_eq.items()}
 
-        for j in range(0,96):
-            for k in range(0,96):
+        for j in range(0, img_a.shape[0]):
+            for k in range(0,img_a.shape[1]):
                 r,g,b,a = child_a[j][k]
                 to_hex_a = colors.to_hex((r/255.0,g/255.0,b/255.0,a/255.0), keep_alpha=True)
                 if to_hex_a in rev_color_eq:
@@ -253,8 +257,8 @@ class Crossover():
     #    child_a = np.copy(img_a)
     #    child_b = np.copy(img_b)
     #
-    #    for j in range(0, 96):
-    #        for k in range(0, 96):
+    #    for j in range(0, img_a.shape[0]):
+    #        for k in range(0, img_a.shape[1]):
     #            for l in range (0, 3):
     #                bin_a = bin(img_a[j][k][l]).replace("0b","").zfill(8)
     #                bin_b = bin(img_b[j][k][l]).replace("0b","").zfill(8)

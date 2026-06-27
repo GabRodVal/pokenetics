@@ -1,5 +1,6 @@
 import numpy as np
 from PIL import Image, ImageFile, ImageOps
+import cv2
     
     
     
@@ -7,15 +8,26 @@ from PIL import Image, ImageFile, ImageOps
     
     
 def to_grayscale(img):
-    #mask = img[:,:,3] == 0
+    mask = img[:,:,3] == 0
     #img[mask] = [255,255,255,255]
     #img[mask] = [0,255,0,255]
-    temp_img = Image.fromarray(img)
-    temp_img = temp_img.convert("RGB")
-    new_img = ImageOps.grayscale(temp_img)
-            
-    new_img = np.array(new_img)
-    return new_img
+    temp_img = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
+    for i in range(img.shape[0]):
+        for j in range(img.shape[1]):
+            #t_rd = img[i][j]//3
+            temp_img[i][j] = (img[i][j].sum()//3)
+    temp_img[mask] = 255
+
+    #cv2.imwrite('teste_cinzento.jpg', temp_img)
+    #new_img = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
+    #mk = img[:,:,:] >= 0
+    #msk = new_img[:,:] == 0
+    #print(img[mk])
+    #new_img[msk] = img[mk].sum()//3
+    #print(new_img)
+
+    #cv2.imwrite('teste_cinzento222.jpg', new_img)
+    return temp_img
     #return new_img
     
 

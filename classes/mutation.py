@@ -1,6 +1,7 @@
 from random import randint, choices, sample, uniform, seed
 import numpy as np
 from PIL import Image, ImageFile, ImageOps
+import math
 
 
 
@@ -44,8 +45,10 @@ class Mutation():
                 pk_indie = new_img
 
             case _:
+                upper_range = math.floor(pk_indie.shape[0] * 0.75)
+                lower_range = math.floor(pk_indie.shape[0] * 0.25)
                 mut_r = (1 * max((randint(0,1) * 10), 1) * max((randint(0,1) * 10), 1) * max((randint(0,1) * 10), 1))
                 for iter in range(0, mut_r):
-                    pk_indie[randint(11, 83)][randint(11, 83)] = np.copy(pk_indie[randint(11, 83)][randint(11, 83)])
+                    pk_indie[randint(lower_range, upper_range)][randint(lower_range, upper_range)] = np.copy(pk_indie[randint(lower_range, upper_range)][randint(lower_range, upper_range)])
 
         return pk_indie

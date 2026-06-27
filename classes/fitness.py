@@ -44,7 +44,6 @@ class Fitness():
         return pks
         
     def selection(self):
-
         apt = [t[1] for t in self.fitness_list]
 
         while True:
@@ -56,5 +55,6 @@ class Fitness():
 
         
         return [selected[0][0], selected[1][0]]
+    
     
     

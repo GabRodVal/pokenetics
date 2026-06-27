@@ -1,9 +1,7 @@
 import os
 from random import randint, choices, sample, uniform, seed
 import math
-import json
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
 import numpy as np
 import imageio.v3 as imio
 import imageio
@@ -73,7 +71,8 @@ class PokeGenetics():
     def __init__(
             self,
             target_dex,
-            pop_size=96,
+            generation=9,
+            pop_size=40,
             mutation_rate=0.02,
             crossover_rate=0.72,
             max_gen=25,
@@ -94,6 +93,7 @@ class PokeGenetics():
         self.party = classes.party.Party(
             target_dex=target_dex,
             easy_shiny=easy_shiny,
+            generation=generation,
             pop_size=pop_size,
             crossover_rate=crossover_rate,
             crossover_type=crossover_type,
@@ -109,7 +109,7 @@ class PokeGenetics():
             fitness_type=fitness_type,
             )
 
-
+        self.generation = generation
         #For Statistics
         self.cur_gen = 0
         self.h_scores = []
@@ -201,7 +201,7 @@ class PokeGenetics():
 
         if len(self.top_league) < 1:
             self.top_league.append(most_fit_mon)
-        elif abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > 960:
+        elif abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > 20:
             self.top_league.append(most_fit_mon)
         if len(self.top_league) > 1000:
                 self.top_league = self.top_league[:500] + self.top_league[-500:]
@@ -394,17 +394,20 @@ class PokeGenetics():
 def main():
     poke_gen = PokeGenetics(
         # Número da Dex do Pokémon alvo, único parametro não opcional
-        target_dex="151",
+        target_dex="144",
+        # Qual set de sprites será utilizado, atualmente apenas 1 -> (56x56, 151 sprites) e 9-> (96x96, 1100+ sprites)
+        generation=2,
         # Tamanho padrão da população
         pop_size=100,
         # Chance de acontecer mutação pra cada membro da nova geração (ignora elitismo)
-        mutation_rate=0.034,
+        mutation_rate=0.08,
         # Porcentagem da população a ser povoada por crossover
-        crossover_rate=0.64,
+        crossover_rate=0.60,
         # Geração máxima
-        max_gen=1000, 
+        max_gen=2000, 
         # Tipo de avaliação usada (atualmente RGBA e Grayscale)
-        score_type='Grayscale',
+        score_type='RGBA',
+        #score_type='Grayscale',
         # Regulação automatica dos valores crossover_rate, mutation_rate e elitism_rate.
         auto_reg=True,
         # Tipo de regulação automatica, entre Standard, Wave, Chaotic e None
@@ -418,7 +421,8 @@ def main():
         # Porcentagem da população a ser preenchida por elitismo
         elitism_rate=0.05,
         # Tipo de crossover
-        crossover_type=['mesh_essential', 'bisect', 'swap_simple', 'swap_serial', 'swap_colors', 'swap_even'],
+        #crossover_type=['mesh_essential', 'bisect', 'swap_simple', 'swap_serial', 'swap_colors', 'swap_even'],
+        crossover_type=['mesh_essential', 'bisect', 'swap_serial', 'swap_colors', 'swap_even'],
         # Tipo de fitness a seguir
         fitness_type='normalize',
         # Salva imagens de todas as populações geradas em 'runs'

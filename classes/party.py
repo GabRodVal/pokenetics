@@ -15,7 +15,8 @@ class Party():
             self,
             target_dex,
             easy_shiny=False,
-            pop_size=96,
+            generation=9,
+            pop_size=40,
             crossover_rate=0.72,
             mutation_rate=0.02,
             elitism_rate=0.08,
@@ -35,7 +36,7 @@ class Party():
         self.score_type = score_type
 
         # Pokedex
-        self.pokedex = pokedex.Pokedex(target_dex=target_dex, easy_shiny=easy_shiny, score_type=self.score_type)
+        self.pokedex = pokedex.Pokedex(target_dex=target_dex, easy_shiny=easy_shiny, score_type=self.score_type, generation=generation)
 
         self.target_dex = target_dex
         self.target_mon = self.pokedex.get_target_pokemon()
@@ -149,7 +150,7 @@ class Party():
     # Test instead of doubling waves using prime numbers
     def regulate_self_wavering(self):
         if self.reg_pop:
-            self.pop_size = min(max(round(self.og_pop_size + ((self.og_pop_size/2) * math.sin(math.radians(self.cur_gen * 3)))), 8), 1216)
+            self.pop_size = min(max(round(self.og_pop_size + ((self.og_pop_size/2) * math.sin(math.radians(self.cur_gen * 3)))), 8), self.pokedex.get_pokedex_length())
         # Test lower variation rate for crossover? 0.2? 0.25? 0.15? higher maybe? 0.33?
         self.crossover_rate = 0.7 + (0.25 * math.sin(math.radians(self.cur_gen * 5)))
 
@@ -226,7 +227,6 @@ class Party():
             for ft in fittest_few:
                 new_gen.append(ft[0])
         
-
         for pk in new_gen:
             self.team.append([pk, 0])
 
