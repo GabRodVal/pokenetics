@@ -46,14 +46,14 @@ class Pokedex():
         target_image = self.load_pokepng(target_dex)
         self.score_type = score_type
         print(score_type)
-        if self.score_type == 'RGBA':
+        if self.score_type == 'RGBA'.lower():
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255*3)) ]
-        elif self.score_type == 'Grayscale':
+        elif self.score_type == 'Grayscale'.lower():
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255)) ]
-        elif self.score_type == 'Binary':
+        elif self.score_type == 'Binary'.lower() or self.score_type == 'Perfect'.lower():
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(1)) ]
         else:
-            print(self.score_type == 'RGBA')
+            print(self.score_type == 'oops')
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255*3)) ]
         self.banned_mon = []
         self.banned_mon.append(self.target_mon)
@@ -117,6 +117,20 @@ class Pokedex():
 
     # Testar diferentes formas de avaliação sobre as mesmas condições (72, 600, wave, EM:OFF)
     def aval_target(self, ref_mon, acc_mon):
+        score = 0
+        if self.score_type == 'RGBA'.lower():
+            score = self.aval_target_standard(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'Grayscale'.lower():
+            score = self.aval_target_grayscale(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'Binary'.lower():
+            score = self.aval_target_binary(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'Perfect'.lower():
+            score = self.aval_target_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
+            
+        return score
+    
+    # Testar diferentes formas de avaliação sobre as mesmas condições (72, 600, wave, EM:OFF)
+    def aval_target_standard(self, ref_mon, acc_mon):
         score = np.int32(0)
 
         for j in range(0, len(ref_mon[2])):
@@ -189,6 +203,16 @@ class Pokedex():
                 
                     #print(f'{len(ref_mon)}-{len(ref_mon[2])}-{len(ref_mon[2])}')
                     #print(f'{len(acc_mon)}-{len(acc_mon[0])}-{len(acc_mon)}')
+        return score
+    
+    def aval_target_perfect(self, ref_mon, acc_mon):
+        score = np.int32(0)
+
+        for j in range(0, len(ref_mon[2])):
+            for k in range(0, len(ref_mon[2])):
+                if np.equal(ref_mon[2][j][k][3], acc_mon[0][j][k][3]):
+                    score += 1
+            
         return score
 
     ##########################################

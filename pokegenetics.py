@@ -110,6 +110,12 @@ class PokeGenetics():
             save_all_imgs=save_all_imgs
             )
 
+        # Auto Reg
+        self.regulate_type=regulate_type
+        self.auto_regulate = auto_reg
+        self.reg_pop = reg_pop
+        
+        # Generation
         self.generation = generation
         #For Statistics
         self.cur_gen = 0
@@ -129,6 +135,7 @@ class PokeGenetics():
         self.cur_score = 0
         self.top_league = []
         self.base_dir = ''
+        self.easy_shiny = easy_shiny
 
         self.pop_size = pop_size
         self.mutation_rate = mutation_rate
@@ -139,9 +146,8 @@ class PokeGenetics():
         self.fitness_type = fitness_type
         self.elitism_rate = elitism_rate
         self.score_type = score_type
-        self.regulate_type=regulate_type
-        self.auto_regulate = auto_reg
-
+        self.crossover_type = crossover_type
+        
         self.verbose = verbose
         self.save_all_imgs = save_all_imgs
 
@@ -202,7 +208,7 @@ class PokeGenetics():
 
         if len(self.top_league) < 1:
             self.top_league.append(most_fit_mon)
-        elif abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > 20:
+        elif abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3])/10000:
             self.top_league.append(most_fit_mon)
         if len(self.top_league) > 1000:
                 self.top_league = self.top_league[:500] + self.top_league[-500:]
@@ -227,6 +233,9 @@ class PokeGenetics():
                 top_gif.append(champ_img)
 
         imageio.mimsave(f'{self.base_dir}/best/best_mon.gif', top_gif, format='GIF', duration=80, loop=0)
+    
+    
+    
     # Add a post 99 graph, and maybe something else with it by side (total points per gen?)
     def plot_progress(self):
         target_mon = self.party.get_target_pokemon()
@@ -253,7 +262,7 @@ class PokeGenetics():
         plt_fig[:, :, 3] = 64
 
         main_fig.set_ylabel("Precision Score")
-        main_fig.set_xlabel("Generation")
+        main_fig.set_xlabel(f"Generation - Avg {mean(self.h_scores)}")
         main_fig.imshow(plt_fig, aspect='auto',extent=[-(len(self.h_scores)/100), len(self.h_scores)-1, min(self.h_scores)-0.1, max(self.h_scores)+0.1])
         main_fig.grid()
         main_fig.plot(self.h_scores, '#6a329f', label='score', linewidth=1.6)
@@ -297,6 +306,26 @@ class PokeGenetics():
         
         #plt.show()
 
+    def get_run_stats(self):
+        target = self.party.get_target_pokemon()
+        return {
+            'target':f'[{target[0]}] - {target[1]}',
+            'score': f'{self.score_type} - {self.first_score}->{self.cur_score} | {self.h_scores.pop():.4f}%',
+            'generation': self.generation,
+            'time':f'{(self.cur_stamp - self.first_stamp)} | avg {((self.cur_stamp - self.first_stamp)/self.cur_gen):.4f}',
+            'gens': f'{self.cur_gen}/{self.max_gen}',
+            'population':f'{self.pop_size} | avg {mean(self.pop_values):.4f} | tot {mean(self.pop_values) * self.cur_gen}',
+            'crossover': f'{self.crossover_rate}|avg {mean(self.cross_values):.4f}\n {self.crossover_type}',
+            'mutation': f'{self.mutation_rate} | avg {mean(self.mut_values):.4f}',
+            'elitism': f'on: {self.elitism} | mut:{self.elitism_mutation} - {self.elitism_rate}',
+            'fitness': f'{self.fitness_type} - {mean(self.fitness_values)}',
+            'stat_reg': f'on:{self.auto_regulate} | pop:{self.reg_pop} | {self.regulate_type}',
+            'easy_shiny': f'on:{self.easy_shiny}',
+            'img_gen': f'on:{self.save_all_imgs}'
+            }
+        
+        
+
     def create_dir(self, cur_dir):
         try:
             os.makedirs(f'{cur_dir}')
@@ -320,7 +349,7 @@ class PokeGenetics():
         self.old_stamp = self.first_stamp
         target_mon = self.party.get_target_pokemon()
 
-        self.base_dir = f'runs/{str(self.first_stamp)[:2]}-{str(self.first_stamp)[-8:]}-{target_mon[1]}-{self.score_type}-p{self.pop_size}-g{self.max_gen}'
+        self.base_dir = f'runs/{str(self.first_stamp)[:2]}-{str(self.first_stamp)[-8:]}-{target_mon[1]}-{self.score_type}-{self.crossover_type[0]}-{'pp' * (len(self.crossover_type)>=2)}-p{self.pop_size}-g{self.max_gen}'
         self.party.set_base_dir(self.base_dir)
 
         self.create_dir(cur_dir=self.base_dir)
@@ -337,7 +366,7 @@ class PokeGenetics():
         for _ in range(self.max_gen):
             if self.save_all_imgs: self.create_dir(cur_dir=f'{self.base_dir}/gen_{self.cur_gen}')
             
-            if (self.cur_score/target_mon[3]) > 0.995:
+            if (self.cur_score/target_mon[3]) > 0.98:
                 self.quit_loop = True
             if self.quit_loop:
                 break
@@ -357,6 +386,10 @@ class PokeGenetics():
         if self.verbose: print(f'\nResultado Final: {((self.cur_score/target_mon[3]) * 100):.4f}% | {self.first_score}pts -> {self.cur_score}pts | {(self.cur_stamp - self.first_stamp):.1f}s, {((self.cur_stamp - self.first_stamp)/self.cur_gen):.3f}s por Gen\n')
 
         self.plot_progress()
+
+        return self.get_run_stats()
+
+    
 
         
 #CPU THINGIES
@@ -392,9 +425,9 @@ class PokeGenetics():
     #    return math.sqrt(i)
 '''
 def main():
-    poke_gen = PokeGenetics(
+    '''poke_gen = PokeGenetics(
         # Número da Dex do Pokémon alvo, único parametro não opcional
-        target_dex="158",
+        target_dex="144",
         # Qual set de sprites será utilizado, atualmente apenas 1 -> (56x56, 151 sprites) e 9-> (96x96, 1100+ sprites)
         generation=2,
         # Tamanho padrão da população
@@ -402,13 +435,13 @@ def main():
         # Chance de acontecer mutação pra cada membro da nova geração (ignora elitismo)
         mutation_rate=0.08,
         # Porcentagem da população a ser povoada por crossover
-        crossover_rate=0.60,
+        crossover_rate=0.64,
         # Geração máxima
-        max_gen=1000, 
+        max_gen=50, 
         # Tipo de avaliação usada (atualmente RGBA e Grayscale)
         score_type='RGBA',
         #score_type='Grayscale',
-        #score_type='Binary',
+        #score_type='perfect',
         # Regulação automatica dos valores crossover_rate, mutation_rate e elitism_rate.
         auto_reg=True,
         # Tipo de regulação automatica, entre Standard, Wave, Chaotic e None
@@ -422,8 +455,8 @@ def main():
         # Porcentagem da população a ser preenchida por elitismo
         elitism_rate=0.05,
         # Tipo de crossover
-        #crossover_type=['swap_channels'],
-        crossover_type=['mesh_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even'],
+        crossover_type=['mesh_subtract'],
+        #crossover_type=['mesh_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even'],
         #crossover_type=['mesh_essential', 'bisect', 'multisect', 'swap_serial', 'swap_colors','swap_channels', 'swap_even'],
         # Tipo de fitness a seguir
         fitness_type='normalize',
@@ -431,9 +464,83 @@ def main():
         save_all_imgs=True,
         # Faz shinys serem faceis de achar
         easy_shiny=True
-        )
+        )'''
     
-    poke_gen.run()
+    
+    crossovers_to_test = [
+        ['swap_sensible'],
+        ['mesh_essential'],
+        ['bisect'],
+        ['multisect'],
+        ['swap_simple'],
+        ['swap_serial'],
+        ['swap_colors'],
+        ['swap_channels'],
+        ['swap_even'],
+        ['swap_binary'],
+        ['dark_n_light'],
+        ['contrast'],
+        ['mesh_mini'],
+        ['checker_stack'],
+        ['swap_squared'],
+        ['mesh_subtract'],
+        ['mesh_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mesh_mini', 'checker_stack', 'swap_squared', 'mesh_subtract']
+        ]
+    
+    relat = open(f'CrossOver_Exp_{159}.txt', 'w')
+    relat.write('--- #159 ---\n')
+    for cr in crossovers_to_test:
+        pg = PokeGenetics(
+            target_dex='159',
+            generation=2,
+            pop_size=200,
+            max_gen=300,
+            crossover_rate=0.6,
+            score_type='RGBA',
+            crossover_type=cr,
+            easy_shiny=True,
+            save_all_imgs=False,
+            )
+        result = pg.run()
+        relat.write('\n ##########################\n')
+        relat.write('## ')
+        relat.write(str(cr))
+        relat.write(' ##\n')
+        relat.write(' ##########################\n')
+        
+        relat.write(f'\n{result['target']}')
+        relat.write('\n    ')
+        relat.write(f'Pontuacao => {result['score']}')
+        relat.write('\n    ')
+        relat.write(f'Geracao => {result['generation']}')
+        relat.write('\n    ')
+        relat.write(f'Tempo => {result['time']}')
+        relat.write('\n    ')
+        relat.write(f'Iteracoes=> {result['gens']}')
+        relat.write('\n    ')
+        relat.write(f'Populacao => {result['population']}')
+        relat.write('\n    ')
+        relat.write(f'CrossOver => {result['crossover']}')
+        relat.write('\n    ')
+        relat.write(f'Mutacao => {result['mutation']}')
+        relat.write('\n    ')
+        relat.write(f'Elitismo => {result['elitism']}')
+        relat.write('\n    ')
+        relat.write(f'Aptidao => {result['fitness']}')
+        relat.write('\n    ')
+        relat.write(f'Auto-Regulacao => {result['stat_reg']}')
+        relat.write('\n    ')
+        relat.write(f'Easy Shiny => {result['easy_shiny']}')
+        relat.write('\n    ')
+        relat.write(f'Salvamento de Imagens => {result['img_gen']}')
+        relat.write('\n\n\n')
+        
+    relat.write('END')
+    relat.close
+    
+    #jooj = poke_gen.run()
+    #
+    #print(jooj)
 
 
 #pity - anti-elitism/anti-fitness rate
@@ -452,5 +559,5 @@ def main():
 
 if __name__ == '__main__':
 
-    ['RGBA', 'Grayscale', 'Binary']
+    #['RGBA', 'Grayscale', 'Binary']
     main()

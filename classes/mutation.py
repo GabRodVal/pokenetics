@@ -12,6 +12,7 @@ class Mutation():
 
     def mutate(self, pk_indie):
         #if randint(0, 100000)/100000 < self.mutation_rate:
+        
         mutation_type = randint(0, 60)
         match mutation_type:
             case m if m < 7:

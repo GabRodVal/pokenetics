@@ -33,7 +33,7 @@ class Party():
             save_all_imgs=True
             ):
         
-        self.score_type = score_type
+        self.score_type = score_type.lower()
         self.fitness_rate = pop_size
 
         # Pokedex
@@ -247,15 +247,18 @@ class Party():
                     self.team.append([self.pokedex.get_another_pokemon(dk), 0])
                 
     def score_party(self):
-        if self.score_type == 'RGBA':
+        if self.score_type == 'RGBA'.lower():
             for it in range(len(self.team)):
                 self.team[it][1] = self.pokedex.aval_target(self.target_mon, self.team[it])
-        elif self.score_type == 'Grayscale':
+        elif self.score_type == 'Grayscale'.lower():
             for it in range(len(self.team)):
                 self.team[it][1] = self.pokedex.aval_target_grayscale(self.target_mon, self.team[it])
-        elif self.score_type == 'Binary':
+        elif self.score_type == 'Binary'.lower():
             for it in range(len(self.team)):
                 self.team[it][1] = self.pokedex.aval_target_binary(self.target_mon, self.team[it])
+        elif self.score_type == 'Perfect'.lower():
+            for it in range(len(self.team)):
+                self.team[it][1] = self.pokedex.aval_target_perfect(self.target_mon, self.team[it])
                 
         #fit_team = self.fitness.get_team_fitness_score(self.team)
         #self.team = fit_team
