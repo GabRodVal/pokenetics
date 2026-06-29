@@ -91,7 +91,7 @@ class Pokedex():
 
     def get_random_pokemon(self):
         while True:
-            nxt = randint(0, len(self.get_pokedex_length)-1)
+            nxt = randint(0, self.get_pokedex_length()-2)
 
             if self.target_mon[0] != self.pokedex_keys[nxt]:
                 png = self.load_pokepng(self.pokedex_keys[nxt])

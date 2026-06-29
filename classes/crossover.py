@@ -80,16 +80,6 @@ class Crossover():
                         child_b[j][k] = np.ceil(np.add(np.multiply(img_b[j][k], op_con), np.multiply(img_a[j][k], 1-op_con)))
 
         return child_a, child_b
-    
-    #def crossover_mesh_sensible(self, img_a, img_b):
-    #    child_a = np.copy(img_a)
-    #    child_b = np.copy(img_b)
-    #   if a closer:
-    #       a 75%, b 25%
-    #   elif b closer:
-    #       a 25%, b 75%
-    #   else:
-    #       a 50%, b 50%
 
     def crossover_swap_pixels(self, img_a, img_b):
         child_a = np.copy(img_a)
@@ -120,6 +110,7 @@ class Crossover():
 
         return child_a, child_b
     
+    #CHEAT
     def crossover_swap_sensible(self, img_a, img_b):
         child_a = np.copy(img_a)
         child_b = np.copy(img_b)
@@ -193,27 +184,42 @@ class Crossover():
     def crossover_swap_even(self, img_a, img_b):
         child_a = np.copy(img_a)
         child_b = np.copy(img_b)
-        v_slice = randint(0,1)
         swap = False
-
-        for j in range(0, img_a.shape[0]):
-            for k in range(0, img_a.shape[1]):
-                if v_slice:
-                    if swap:
-                        child_a[j][k] = np.copy(img_a[j][k])
-                        child_b[j][k] = np.copy(img_b[j][k])
-                    else:
-                        child_a[j][k] = np.copy(img_b[j][k])
-                        child_b[j][k] = np.copy(img_a[j][k])
-                else:
-                    if swap:
-                        child_a[k][j] = np.copy(img_a[k][j])
-                        child_b[k][j] = np.copy(img_b[k][j])
-                    else:
-                        child_a[k][j] = np.copy(img_b[k][j])
-                        child_b[k][j] = np.copy(img_a[k][j])
-                swap = not(swap)
-
+        
+        if randint(0,1):
+            if randint(0,1):
+                for j in range(0, img_a.shape[0]):
+                    for k in range(0, img_a.shape[1]):
+                        if swap:
+                            child_a[j][k] = np.copy(img_a[j][k])
+                            child_b[j][k] = np.copy(img_b[j][k])
+                        else:
+                            child_a[j][k] = np.copy(img_b[j][k])
+                            child_b[j][k] = np.copy(img_a[j][k])
+                            
+                    swap = not(swap)
+            else:
+                for j in range(0, img_a.shape[0]):
+                    for k in range(0, img_a.shape[1]):
+                        if swap:
+                            child_a[k][j] = np.copy(img_a[k][j])
+                            child_b[k][j] = np.copy(img_b[k][j])
+                        else:
+                            child_a[k][j] = np.copy(img_b[k][j])
+                            child_b[k][j] = np.copy(img_a[k][j])
+                    swap = not(swap)
+        else:
+            for j in range(0, img_a.shape[0]):
+                    for k in range(0, img_a.shape[1]):
+                        swap = not(swap)
+                        if swap:
+                            child_a[j][k] = np.copy(img_a[j][k])
+                            child_b[j][k] = np.copy(img_b[j][k])
+                        else:
+                            child_a[j][k] = np.copy(img_b[j][k])
+                            child_b[j][k] = np.copy(img_a[j][k])
+                    swap = not(swap)
+        
         return child_a, child_b
     
     def crossover_swap_colors(self, img_a, img_b):
@@ -305,33 +311,48 @@ class Crossover():
     def crossover_swap_binary(self, img_a, img_b):
         child_a = np.zeros_like(img_a)
         child_b = np.zeros_like(img_b)
-        mk = img_a[:,:,3] != 0
-        mk += img_b[:,:,3] != 0
-        child_a[mk] = [255,255,255,255]
-        child_b[mk] = [255,255,255,255]
+        #mk = img_a[:,:,3] != 0
+        #mk += img_b[:,:,3] != 0
+        #child_a[mk] = [255,255,255,255]
+        #child_b[mk] = [255,255,255,255]
         bin_a = ''
         bin_b = ''
         for j in range(0, img_a.shape[0]):
             for k in range(0, img_a.shape[1]):
-                for l in range (0, 2):
-                    bin_a = bin(img_a[j][k][l].copy()).replace("0b","").zfill(8)
-                    bin_b = bin(img_b[j][k][l].copy()).replace("0b","").zfill(8)
+                if np.array_equal(img_a[j][k], img_b[j][k]):
+                    continue
+                if img_a[j][k][3] == 0 and img_b[j][k][3] == 0:
+                    continue 
+                for l in range (0, 4):
+                    if img_a[j][k][l] == img_b[j][k][l]:
+                        child_a[j][k][l] = np.copy(img_a[j][k][l])
+                        child_b[j][k][l] = np.copy(img_b[j][k][l])
+                        continue
+                    bin_a = bin(img_a[j][k][l]).replace("0b","").zfill(8)
+                    bin_b = bin(img_b[j][k][l]).replace("0b","").zfill(8)
 
                     bit_a = ''
                     bit_b = ''
-                    for bit in range(len(bin_b)):
+                    for bit in range(0,8):
                         if randint(0,1):
-                            bit_a += bin_b[bit]
-                            bit_b += bin_a[bit]
+                            bit_a = bit_a + bin_b[bit]
+                            bit_b = bit_b + bin_a[bit]
                         else:
-                            bit_a += bin_a[bit]
-                            bit_b += bin_b[bit]
+                            bit_a = bit_a + bin_a[bit]
+                            bit_b = bit_b + bin_b[bit]
                                 
                     child_a[j][k][l] = int(bit_a, 2)
                     child_b[j][k][l] = int(bit_b, 2)
                     #print(child_a[j][k][l])
         
-        return np.array(child_a), np.array(child_b)
+
+        mkal = child_a[:,:,3] > 0
+        child_a[mkal,3] = 255
+        
+        mkbl = child_b[:,:,3] > 0
+        child_b[mkbl,3] = 255
+        
+        return child_a, child_b
     
     def crossover_dark_n_light(self, img_a, img_b):
         child_a = np.zeros_like(img_a)
@@ -491,6 +512,9 @@ class Crossover():
                 c_a, c_b = self.crossover_swap_squared(img_a, img_b)
             case 'mesh_subtract':
                 c_a, c_b = self.crossover_mesh_subtract(img_a, img_b)
+            case 'no_cross':
+                c_a = img_a.copy()
+                c_b = img_b.copy()
             case _:
                 print('uh-oh, crossover invalido')
                 c_a = img_a.copy()

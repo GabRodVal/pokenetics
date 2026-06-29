@@ -7,6 +7,7 @@ import classes.pokedex as pokedex
 import classes.mutation as mutation
 import classes.crossover as crossover
 import classes.fitness as fitness
+import classes.utils as utils
 
 debug = True
 
@@ -154,14 +155,18 @@ class Party():
         if self.reg_pop:
             self.pop_size = min(max(round(self.og_pop_size + ((self.og_pop_size/2) * math.sin(math.radians(self.cur_gen * 3)))), 8), self.pokedex.get_pokedex_length())
         # Test lower variation rate for crossover? 0.2? 0.25? 0.15? higher maybe? 0.33?
-        self.crossover_rate = 0.7 + (0.25 * math.sin(math.radians(self.cur_gen * 5)))
+        self.crossover_rate = 0.6 + (0.3 * math.sin(math.radians(self.cur_gen * 5)))
 
         if self.elitism:
-            self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate/1.3333) * math.sin (math.radians(self.cur_gen * 7))), 0.005), 0.75)
+            self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate * 0.875) * math.sin(math.radians(self.cur_gen * 7))), 0.005), 0.5)
         
-        self.fitness_rate = min(max(self.pop_size * 2 * math.cos(math.atan(math.radians(self.cur_gen/3))), (max((self.cur_gen/300) -3, 0) * 0.125) * (self.pop_size * math.sin(math.radians(self.cur_gen)))) * math.cos(math.sin(math.radians(self.cur_gen))), self.pop_size*2)
-
-        self.mutation_rate = min(max(self.og_mutation_rate + (((self.og_mutation_rate/2) * math.sin (math.radians(self.cur_gen * 11))) * max(0.4 + ((self.cur_gen * 0.0012) * math.cos(self.cur_gen/8)), 0.01) ), 0.001), 0.75)
+        if self.max_gen >= 300:
+            self.fitness_rate = min(max(self.pop_size * 2 * math.cos(math.atan(math.radians(self.cur_gen/2))), (max((self.cur_gen/300) -3, 0) * 0.125) * (self.pop_size * math.sin(math.radians(self.cur_gen)))) * math.cos(math.sin(math.radians(self.cur_gen))), self.pop_size*2)
+        else:
+            self.fitness_rate = self.og_pop_size + ((self.og_pop_size * 0.925) * math.sin(math.radians(self.cur_gen * 2)))
+        
+        
+        self.mutation_rate = min(max(self.og_mutation_rate + (((self.og_mutation_rate/2) * math.sin(math.radians(self.cur_gen * 11))) * max(0.4 + ((self.cur_gen * 0.0012) * math.cos(self.cur_gen/8)), 0.01) ), 0.001), 0.75)
 
     def get_new_crossover_mutation(self):
 
@@ -179,10 +184,13 @@ class Party():
     def initial_population(self):
         poke_keys = self.pokedex.get_pokedex_keys()
 
-        pop_dex = choices(poke_keys, k=self.pop_size)
+        max_pull = min(self.pop_size, math.floor(self.pokedex.get_pokedex_length() * 0.99))
+        pop_dex = choices(poke_keys, k=max_pull)
         for pk in pop_dex:
             poke_img = self.pokedex.get_another_pokemon(pk)
-            self.team.append([poke_img, 0])    
+            self.team.append([poke_img, 0])
+        while len(self.team) < self.pop_size:
+            self.team.append([self.pokedex.get_random_pokemon(),0])
 
     def find_elite(self, team):
         s_team = sorted(team, key=lambda x: x[1])
@@ -198,35 +206,35 @@ class Party():
 
     #maybe its time to implement steady state...
     def populate_new_gen(self):
-        new_gen = list()
+        new_gen = []
+        fittest_few = []
+
 
         #self.fitness_list = list(self.fitness())
         while len(new_gen) < self.pop_size * (self.crossover_rate):
             pkm_a, pkm_b = self.get_new_crossover_mutation()       
-            new_gen.append([pkm_a,0])
-            new_gen.append([pkm_b,0])  
-
-        fittest_few = list()
+            new_gen.append(pkm_a)
+            new_gen.append(pkm_b)
+        
         sorted_team = sorted(self.team, key=lambda x: x[1])
         if self.elitism:
             most_fit_mon = sorted_team.pop()
-            fittest_few.append([most_fit_mon[0],0])
-            if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{most_fit_mon[1]}_SR.png', most_fit_mon[0])
+            fittest_few.append(most_fit_mon[0])
+            if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{most_fit_mon[1]}_SR0.png', most_fit_mon[0])
         
-        for _ in range(len(self.team)):
+        for iter in range(len(self.team)):
             if self.elitism and (len(fittest_few) < self.pop_size * self.elitism_rate) and len(sorted_team) > 0:
                 # or... just sort it once and pop shit until you're done
                 heir = sorted_team.pop()
                 if self.elitism_mutation: #conditional?
-                    fittest_few.append([self.mutation.mutate(heir[0]), 0])
+                    fittest_few.append(self.mutation.mutate(heir[0]))
                 else:
-                    fittest_few.append([heir[0], 0])
-                #self.team.remove(heir)
+                    fittest_few.append(heir[0])
                 
-                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{heir[1]}_R.png', heir[0])
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{heir[1]}_R{iter}.png', heir[0])
             elif self.save_all_imgs and len(sorted_team) > 0:
                 old_poke = sorted_team.pop()
-                imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{old_poke[1]}_C.png', old_poke[0])
+                imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{old_poke[1]}_C{iter}.png', old_poke[0])
         
         self.team.clear()
         
@@ -234,8 +242,16 @@ class Party():
             for ft in fittest_few:
                 new_gen.append(ft)
         
-        for pk in new_gen:
-            self.team.append(pk)
+        dupelen = len(new_gen)
+        self.team = utils.remove_dupes(new_gen).copy()
+        unqlen = len(self.team)
+        new_gen.clear()
+        
+        #for pk in new_gen:
+        #    self.team.append(pk)
+            
+        if dupelen != unqlen and debug:
+            print(f'Duplicatas removidas: Tam. Equipe {dupelen} -> {unqlen} (-{dupelen-unqlen})')
 
         if len(self.team) < self.pop_size:
             poke_keys = self.pokedex.get_pokedex_keys()

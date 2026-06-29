@@ -29,17 +29,15 @@ class Mutation():
                 mask = pk_indie[:,:,3]
                 temp_img = Image.fromarray(pk_indie)
                 temp_img = temp_img.convert("RGB")
-                match randint(0, 24):
-                    case m if m < 4:
+                match randint(0, 5):
+                    case m if m == 0:
                         new_img = ImageOps.grayscale(temp_img)
-                    case m if m < 9:
+                    case m if m == 1:
                         new_img = ImageOps.invert(temp_img)
-                    case m if m < 14:
+                    case m if m == 2:
                         new_img = ImageOps.solarize(temp_img)
-                    case m if m < 19:
-                        new_img = ImageOps.solarize(temp_img, randint(51, 204))
                     case _:
-                        new_img = ImageOps.posterize(temp_img, randint(1,2))
+                        new_img = ImageOps.posterize(temp_img, randint(1,4))
 
                 new_img = np.array(new_img.convert("RGBA"))
                 new_img[:,:,3] = mask

@@ -39,3 +39,25 @@ def array_remove_and_return(self, team, poke):
     for i, item in enumerate(team):
         if np.array_equal(item[0], poke[0]) and item[1] == poke[1]:
             return team.pop(i)
+        
+def remove_dupes(team):
+
+    wk_team = team.copy()
+    unq_team = []
+    while len(wk_team) > 0:
+        subject = wk_team.pop()
+        unq_team.append([subject.copy(), 0])
+        md_team = []
+        if len(wk_team) > 0:
+            for pk in wk_team:
+                if np.array_equal(subject, pk):
+                    continue
+                else:
+                    md_team.append(pk)
+                    
+        wk_team = md_team.copy()
+        md_team.clear()
+        
+    
+    return unq_team
+    
