@@ -16,7 +16,7 @@ import keyboard
 import classes.party
 
 debug = False
-#seed(25696969)
+seed(25696969)
 
 # Add easy shiny
 # Add Visual Crossover
@@ -95,7 +95,9 @@ class PokeGenetics():
             elitism_rate=0.05,
             easy_shiny=False,
             verbose=True,
-            save_all_imgs=True
+            save_all_imgs=True,
+            serial_experiment=False,
+            serial_label=0
             ):
         
         self.party = classes.party.Party(
@@ -144,6 +146,9 @@ class PokeGenetics():
         self.top_league = []
         self.base_dir = ''
         self.easy_shiny = easy_shiny
+        self.no_change_turns = 0
+        self.no_change_total = 0
+        self.no_change_max = 0
 
         self.pop_size = pop_size
         self.mutation_rate = mutation_rate
@@ -158,6 +163,8 @@ class PokeGenetics():
         
         self.verbose = verbose
         self.save_all_imgs = save_all_imgs
+        self.serial_experiment = serial_experiment
+        self.serial_label = serial_label
 
 
     def set_params(self):
@@ -175,28 +182,43 @@ class PokeGenetics():
 
         most_fit_mon = self.party.get_elite_pokemon()
         target_mon = self.party.get_target_pokemon()
-
+        lab=''
+        
+        if self.serial_experiment:
+            lab = f'[SE{self.serial_label:02d}] '
 
         self.cur_score = int(most_fit_mon[1])
         self.cur_stamp = datetime.datetime.now().timestamp()
 
         stats = self.party.get_stats()
 
+        if self.cur_score == self.old_score:
+            self.no_change_turns += 1
+            self.no_change_total += 1
+            if self.no_change_turns > self.no_change_max:
+                self.no_change_max = self.no_change_turns
+        else:
+            self.no_change_turns = 0
+        
+        self.party.set_fitness_no_progress(self.no_change_turns, self.cur_gen)
         if self.verbose:
+            print(f'\n\033[0m')
             if self.cur_gen == 1:
                 self.first_stamp = datetime.datetime.now().timestamp()
                 self.old_score = self.cur_score
                 print(f'\nCruzamento Iniciado - Alvo: {target_mon[1]} ({target_mon[0]}) | Pontuação: {(target_mon[3])}pts | {self.fitness_type} | EM:{self.elitism_mutation}{self.auto_regulate*f' | Auto:{self.auto_regulate} | Regulate: {self.regulate_type}'}\n')
-                print(f'{1:03d}° Gen - Valor Inicial: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% = 0.00% | {(self.cur_score)}pts | {self.pop_size} Mons | {self.max_gen} Gens | 0.0s -> {(self.cur_stamp - self.first_stamp):.1f}s')
+                print(f'{lab}{1:03d}° Gen - Valor Inicial: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% = 0.00% | {(self.cur_score)}pts | {self.pop_size} Mons | {self.max_gen} Gens | 0.0s -> {(self.cur_stamp - self.first_stamp):.1f}s')
             else:
                 if self.cur_score > self.old_score:
-                    print(f'\033[92m{self.cur_gen:03d}° Gen - Resultado: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% ({((self.cur_score/target_mon[3]) * 100):.3f}%) | {(self.cur_score)}pts (+{((self.cur_score - self.old_score)):06d}pts) -> ({((self.cur_score - self.first_score))}pts) | {(self.cur_stamp - self.old_stamp):.1f}s -> {(self.cur_stamp - self.first_stamp):.1f}s')
+                    print(f'\033[92m{lab}{self.cur_gen:03d}° Gen - Resultado: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% ({((self.cur_score/target_mon[3]) * 100):.3f}%) | {(self.cur_score)}pts (+{((self.cur_score - self.old_score)):06d}pts) -> ({(target_mon[3]-self.cur_score)}pts/{(target_mon[3]-self.first_score)}pts) | {(self.cur_stamp - self.old_stamp):.1f}s -> {(self.cur_stamp - self.first_stamp):.1f}s')
                 elif self.cur_score < self.old_score:
-                    print(f'\033[91m{self.cur_gen:03d}° Gen - Resultado: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% ({((self.cur_score/target_mon[3]) * 100):.3f}%) | {(self.cur_score)}pts (-{(abs(self.cur_score - self.old_score)):06d}pts) -> ({((self.cur_score - self.first_score))}pts) | {(self.cur_stamp - self.old_stamp):.1f}s -> {(self.cur_stamp - self.first_stamp):.1f}s')
+                    print(f'\033[91m{lab}{self.cur_gen:03d}° Gen - Resultado: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% ({((self.cur_score/target_mon[3]) * 100):.3f}%) | {(self.cur_score)}pts (-{(abs(self.cur_score - self.old_score)):06d}pts) -> ({(target_mon[3]-self.cur_score)}pts/{(target_mon[3]-self.first_score)}pts) | {(self.cur_stamp - self.old_stamp):.1f}s -> {(self.cur_stamp - self.first_stamp):.1f}s')
                 else:
-                    print(f'\033[93m{self.cur_gen:03d}° Gen - Resultado: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% ({((self.cur_score/target_mon[3]) * 100):.3f}%) | {(self.cur_score)}pts (={(abs(self.cur_score - self.old_score)):06d}pts) -> ({((self.cur_score - self.first_score))}pts) | {(self.cur_stamp - self.old_stamp):.1f}s -> {(self.cur_stamp - self.first_stamp):.1f}s')
+                    print(f'\033[93m{lab}{self.cur_gen:03d}° Gen - Resultado: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% ({((self.cur_score/target_mon[3]) * 100):.3f}%) | {(self.cur_score)}pts (={(abs(self.cur_score - self.old_score)):06d}pts) -> ({(target_mon[3]-self.cur_score)}pts/{(target_mon[3]-self.first_score)}pts) | {(self.cur_stamp - self.old_stamp):.1f}s -> {(self.cur_stamp - self.first_stamp):.1f}s')
 
-        if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - CoR: {stats[1] * 100:.2f}% | Mut: {stats[2] * 100:.2f}% | Elt: {stats[3] * 100:.2f}% | Pop: {stats[0]}\033[0m')
+        if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - CoR: {stats[1] * 100:.2f}% | Mut: {stats[2] * 100:.2f}% | Elt: {stats[3] * 100:.2f}% | Pop: {stats[0]}')
+        if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - Rodadas sem mudança: {self.no_change_turns} (Max. {self.no_change_max}) | Tot. {self.no_change_total}')
+
         self.h_scores.append(((self.cur_score/target_mon[3]) * 100))        
         if self.cur_gen == 1:
             self.first_score = self.cur_score
@@ -436,19 +458,19 @@ def main():
     
     poke_gen = PokeGenetics(
         # Número da Dex do Pokémon alvo, único parametro não opcional
-        target_dex="151",
+        target_dex="144",
         # Qual set de sprites será utilizado, atualmente apenas 1 -> (56x56, 151 sprites) e 9-> (96x96, 1100+ sprites)
-        generation=1,
+        generation=2,
         # Tamanho padrão da população
-        pop_size=24,
+        pop_size=100,
         # Chance de acontecer mutação pra cada membro da nova geração (ignora elitismo)
         mutation_rate=0.05,
         # Porcentagem da população a ser povoada por crossover
         crossover_rate=0.6,
         # Geração máxima
-        max_gen=20000, 
+        max_gen=5000, 
         # Tipo de avaliação usada (atualmente RGBA e Grayscale)
-        score_type='RGBA',
+        score_type='Perfect',
         #score_type='Grayscale',
         #score_type='perfect',
         # Regulação automatica dos valores crossover_rate, mutation_rate e elitism_rate.
@@ -456,33 +478,36 @@ def main():
         # Tipo de regulação automatica, entre Standard, Wave, Chaotic e None
         regulate_type='wave',
         # Se a regulação automática, quando ativada, deveria alterar o tamanho da população
-        reg_pop=True,
+        reg_pop=False,
         # Se os melhores da geração passada deveriam ser transferidos para a nova geração
         elitism=True,
         # Habilita a chance de elitismo acontecer com Pokémon inseridos por elitismo
-        elitism_mutation=True,
+        elitism_mutation=False,
         # Porcentagem da população a ser preenchida por elitismo
-        elitism_rate=0.05,
+        elitism_rate=0.08,
         # Tipo de crossover
         #crossover_type=['mesh_essential', 'mesh_mini','mesh_subtract'],
-        crossover_type=['swap_binary', 'bisect', 'swap_simple', 'swap_serial', 'swap_channels', 'contrast', 'mesh_essential', 'mesh_mini','mesh_subtract'],
+        #crossover_type=['swap_binary', 'bisect', 'swap_simple', 'swap_serial', 'swap_channels', 'contrast', 'mesh_essential', 'mesh_mini','mesh_subtract'],
+        crossover_type=['mesh_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mesh_mini', 'checker_stack', 'swap_squared', 'mesh_subtract'],
         # Tipo de fitness a seguir
-        fitness_type='normalize',
+        fitness_type='adaptible_learner',
         # Salva imagens de todas as populações geradas em 'runs'
-        save_all_imgs=True,
+        save_all_imgs=False,
         # Faz shinys serem faceis de achar
-        easy_shiny=False
+        easy_shiny=True
         )
     
     jooj = poke_gen.run()
     
     print(jooj)
     
-    '''run_experiment(target_dex=["245"],
-                   pop_size=[20],
-                   crossover_type=[['swap_simple'], ['swap_serial'], ['swap_simple', 'swap_serial']],
-                   score_type=['Perfect'],
-                   max_gen=[1000])'''
+    '''run_experiment(target_dex=["151"],
+                   generations=[1,2,9],
+                   pop_size=[50],
+                   fitness_type=['normalize', 'cos2', 'sin_half'],
+                   crossover_type=[['swap_binary', 'bisect', 'swap_simple', 'swap_serial', 'swap_channels', 'contrast', 'mesh_essential', 'mesh_mini','mesh_subtract']],
+                   score_type=['RGBA'],
+                   max_gen=[200])'''
     
     #run_experiment(target_dex=['244'], generations=[2,9], score_type=['RGBA', 'Grayscale', 'Binary', 'Perfect'])
     '''crossovers_to_test = [
@@ -525,9 +550,12 @@ def run_experiment(
                 ],
     regulate_type=['none'],
     elitism=[True],
+    fitness_type=['normalize'],
     elitism_mutation=[False],
     save_imgs=[False],
     score_type=['RGBA']):
+    
+    lab = 0
     
     relat = open(f'EXP-{len(target_dex)}.{target_dex[0]}_{len(score_type)}.{score_type[0]}_{len(crossover_type)}.{crossover_type[0]}.txt', 'w')    
     for a in target_dex:
@@ -545,47 +573,56 @@ def run_experiment(
                                 for h in elitism_mutation:
                                     for i in save_imgs:
                                         for j in score_type:
-                                            pg = PokeGenetics(
-                                                target_dex=a,
-                                                generation=b,
-                                                pop_size=c,
-                                                max_gen=d,
-                                                auto_reg=(f != 'none'),
-                                                regulate_type=f,
-                                                elitism=g,
-                                                elitism_mutation=h,
-                                                score_type=j,
-                                                crossover_type=e,
-                                                save_all_imgs=i,
-                                                )
-                                            result = pg.run()
-                                            
-                                            relat.write(f'\n{result['target']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Pontuacao => {result['score']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Geracao => {result['generation']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Tempo => {result['time']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Iteracoes=> {result['gens']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Populacao => {result['population']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'CrossOver => {result['crossover']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Mutacao => {result['mutation']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Elitismo => {result['elitism']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Aptidao => {result['fitness']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Auto-Regulacao => {result['stat_reg']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Easy Shiny => {result['easy_shiny']}')
-                                            relat.write('\n    ')
-                                            relat.write(f'Salvamento de Imagens => {result['img_gen']}')
-                                            relat.write('\n\n\n')
+                                            for k in fitness_type:
+                                                
+                                                
+                                                lab += 1
+                                                
+                                                relat.write(f' FIT: [{k}] -------\n')
+                                                pg = PokeGenetics(
+                                                    target_dex=a,
+                                                    generation=b,
+                                                    pop_size=c,
+                                                    max_gen=d,
+                                                    auto_reg=(f != 'none'),
+                                                    fitness_type=k,
+                                                    regulate_type=f,
+                                                    elitism=g,
+                                                    elitism_mutation=h,
+                                                    score_type=j,
+                                                    crossover_type=e,
+                                                    save_all_imgs=i,
+                                                    serial_experiment=True,
+                                                    serial_label=lab
+                                                    )
+                                                result = pg.run()
+                                                
+                                                relat.write(f'\n{result['target']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Pontuacao => {result['score']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Geracao => {result['generation']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Tempo => {result['time']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Iteracoes=> {result['gens']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Populacao => {result['population']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'CrossOver => {result['crossover']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Mutacao => {result['mutation']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Elitismo => {result['elitism']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Aptidao => {result['fitness']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Auto-Regulacao => {result['stat_reg']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Easy Shiny => {result['easy_shiny']}')
+                                                relat.write('\n    ')
+                                                relat.write(f'Salvamento de Imagens => {result['img_gen']}')
+                                                relat.write('\n\n\n')
         
     relat.write('END')
     relat.close

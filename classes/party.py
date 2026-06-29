@@ -84,6 +84,8 @@ class Party():
         self.verbose = verbose
         self.save_all_imgs = save_all_imgs
 
+    def set_fitness_no_progress(self, val, gen):
+        self.fitness.set_no_progress_gen(val=val, gen=gen)
 
     def get_team(self):
         return self.team
@@ -129,7 +131,9 @@ class Party():
         if self.reg_pop:
             self.pop_size = math.floor(max(8, (np.int32(self.og_pop_size * (1.5 * (self.cur_gen/self.max_gen))))))
 
-        self.fitness_rate = max(8, (np.int32(self.pop_size * (1.5 * (self.cur_gen/self.max_gen)))))
+        fit_reg = False
+        if fit_reg:
+            self.fitness_rate = max(8, (np.int32(self.pop_size * (1.5 * (self.cur_gen/self.max_gen)))))
 
     def regulate_self_chaotic(self):
         match randint(0,2):
@@ -145,8 +149,10 @@ class Party():
 
                 if self.reg_pop:
                     self.pop_size = max(8, randint(np.int16(self.og_pop_size/4), np.int16(self.og_pop_size * 2)))
-
-                self.fitness_rate = max(8, randint(np.int16(self.pop_size/3), np.int16(self.pop_size * 2)))
+                
+                fit_reg =False
+                if fit_reg:
+                    self.fitness_rate = max(8, randint(np.int16(self.pop_size/3), np.int16(self.pop_size * 2)))
 
         
     #apply min and max on base regulate function
@@ -160,10 +166,12 @@ class Party():
         if self.elitism:
             self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate * 0.875) * math.sin(math.radians(self.cur_gen * 7))), 0.005), 0.5)
         
-        if self.max_gen >= 300:
-            self.fitness_rate = min(max(self.pop_size * 2 * math.cos(math.atan(math.radians(self.cur_gen/2))), (max((self.cur_gen/300) -3, 0) * 0.125) * (self.pop_size * math.sin(math.radians(self.cur_gen)))) * math.cos(math.sin(math.radians(self.cur_gen))), self.pop_size*2)
-        else:
-            self.fitness_rate = self.og_pop_size + ((self.og_pop_size * 0.925) * math.sin(math.radians(self.cur_gen * 2)))
+        fit_reg =False
+        if fit_reg:
+            if self.max_gen >= 300:
+                self.fitness_rate = min(max(self.pop_size * 2 * math.cos(math.atan(math.radians(self.cur_gen/2))), (max((self.cur_gen/300) -3, 0) * 0.125) * (self.pop_size * math.sin(math.radians(self.cur_gen)))) * math.cos(math.sin(math.radians(self.cur_gen))), self.pop_size*2)
+            else:
+                self.fitness_rate = self.og_pop_size + ((self.og_pop_size * 0.925) * math.sin(math.radians(self.cur_gen * 2)))
         
         
         self.mutation_rate = min(max(self.og_mutation_rate + (((self.og_mutation_rate/2) * math.sin(math.radians(self.cur_gen * 11))) * max(0.4 + ((self.cur_gen * 0.0012) * math.cos(self.cur_gen/8)), 0.01) ), 0.001), 0.75)

@@ -61,3 +61,14 @@ def remove_dupes(team):
     
     return unq_team
     
+def int_ratio(total, rel):
+    res = rel/max(total, 0.0001)
+            ####1..4..7..T
+    pct = res * 10000000
+    return int(pct)
+
+def safe_minimum(num):
+    return max(num, 1)
+
+def safe_weight(total, rel):
+    return safe_minimum(int_ratio(total, rel))
