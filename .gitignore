@@ -228,4 +228,6 @@ posterize-img
 *.jpg
 *.gif
 *.rar
+*.txt
 split_mon.py
+
