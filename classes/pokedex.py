@@ -238,16 +238,19 @@ class Pokedex():
                 
                 if ref_mon[2][j][k][3] != acc_mon[0][j][k][3]:
                     continue
-                elif np.array_equal(ref_mon[2][j][k], acc_mon[0][j][k]) or (ref_mon[2][j][k][3] == acc_mon[0][j][k][3] and acc_mon[0][j][k][3] == 0):
-                    base_score = int(((255 * 4) * 1.5)* 1.5)
+                elif np.array_equal(ref_mon[2][j][k], acc_mon[0][j][k]) or ((ref_mon[2][j][k][3] == acc_mon[0][j][k][3]) and (acc_mon[0][j][k][3] == 0)):
+                    base_score = int(((((255 * 3) * 1.5)* 1.5) * 1.5)* 1.5)
                 else:
-                    if ref_mon[2][j][k][3] == 255:
-                        base_score += int(255 * 1.5)
-                        for l in range(3):
-                            diff = abs(np.int32(ref_mon[2][j][k][l]) - acc_mon[0][j][k][l])
-                            if diff <= 64:
-                                diff = int(diff * 1.5)
-                            base_score += 255 - diff
+                    for l in range(3):
+                        diff = abs(np.int32(ref_mon[2][j][k][l]) - acc_mon[0][j][k][l])
+                        base_score += (255 - diff)
+                        if diff < 64:
+                            base_score = int(base_score * 1.5)
+                            if diff < 32:
+                                base_score = int(base_score * 1.5)
+                                if diff == 0:
+                                    base_score = int(base_score * 1.5)
+                            
                 
                 full_score = base_score + (base_score * (2 * self.target_border_matrix[j][k][0])) + (base_score * self.target_border_matrix[j][k][1])
                 score += full_score

@@ -486,14 +486,17 @@ def main():
         # Porcentagem da população a ser preenchida por elitismo
         elitism_rate=0.08,
         # Tipo de crossover
-        #crossover_type=['mesh_essential', 'mesh_mini','mesh_subtract'],
-        #crossover_type=['swap_binary', 'bisect', 'swap_simple', 'swap_serial', 'swap_channels', 'contrast', 'mesh_essential', 'mesh_mini','mesh_subtract'],
-        crossover_type=['mesh_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mesh_mini', 'checker_stack', 'swap_squared', 'mesh_subtract'],
+        #spc
+        #crossover_type=['swap_sensible'],
+        #strong
+        crossover_type=['swap_binary', 'bisect', 'swap_simple', 'swap_serial', 'swap_channels', 'contrast', 'mesh_essential', 'mesh_mini','mesh_subtract'],
+        #all
+        #crossover_type=['mesh_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mesh_mini', 'checker_stack', 'swap_squared', 'mesh_subtract'],
         # Tipo de fitness a seguir
         #fitness_type='adaptible_learner',
         fitness_type='cos_progressive',
         # Salva imagens de todas as populações geradas em 'runs'
-        save_all_imgs=False,
+        save_all_imgs=True,
         # Faz shinys serem faceis de achar
         easy_shiny=True
         )
