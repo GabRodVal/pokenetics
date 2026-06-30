@@ -52,6 +52,9 @@ class Pokedex():
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255)) ]
         elif self.score_type == 'Binary'.lower() or self.score_type == 'Perfect'.lower():
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(1)) ]
+        elif self.score_type == 'Border'.lower():
+            self.target_border_matrix = utils.find_edges(target_image)
+            self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, self.aval_target(['','', target_image, 0], [target_image,0])]
         else:
             print(self.score_type == 'oops')
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255*3)) ]
@@ -126,6 +129,8 @@ class Pokedex():
             score = self.aval_target_binary(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'Perfect'.lower():
             score = self.aval_target_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'border'.lower():
+            score = self.aval_target_borders(ref_mon=ref_mon, acc_mon=acc_mon)
             
         return score
     
@@ -210,11 +215,45 @@ class Pokedex():
 
         for j in range(0, len(ref_mon[2])):
             for k in range(0, len(ref_mon[2])):
-                if np.equal(ref_mon[2][j][k][3], acc_mon[0][j][k][3]):
+                if np.array_equal(ref_mon[2][j][k], acc_mon[0][j][k]):
                     score += 1
             
         return score
 
+    # add aval_border
+    # if pix == 0,0,0,255 or 255,255,255,255?      -1
+    # ADD EDGE DETECTION ->         cross matrix -1 4 -1
+    # Save self.target_edge                        -1
+    # border = * 4
+    # full pix equal -> 6 pts
+    # full alpha0 equal -> 4pts
+    # channel equal -> 1pt
+    
+    def aval_target_borders(self, ref_mon, acc_mon):
+        score = np.int32(0)
+        
+        for j in range(0, len(ref_mon[2])):
+            for k in range(0, len(ref_mon[2])):
+                base_score = 0
+                
+                if ref_mon[2][j][k][3] != acc_mon[0][j][k][3]:
+                    continue
+                elif np.array_equal(ref_mon[2][j][k], acc_mon[0][j][k]) or (ref_mon[2][j][k][3] == acc_mon[0][j][k][3] and acc_mon[0][j][k][3] == 0):
+                    base_score = int(((255 * 4) * 1.5)* 1.5)
+                else:
+                    if ref_mon[2][j][k][3] == 255:
+                        base_score += int(255 * 1.5)
+                        for l in range(3):
+                            diff = abs(np.int32(ref_mon[2][j][k][l]) - acc_mon[0][j][k][l])
+                            if diff <= 64:
+                                diff = int(diff * 1.5)
+                            base_score += 255 - diff
+                
+                full_score = base_score + (base_score * (2 * self.target_border_matrix[j][k][0])) + (base_score * self.target_border_matrix[j][k][1])
+                score += full_score
+        
+        return score
+    
     ##########################################
 
     #Adicionar aval em greyscale.

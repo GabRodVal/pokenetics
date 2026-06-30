@@ -212,11 +212,19 @@ class Fitness():
             
             if self.cur_gen % 100 == 0:
                 print(f'Dict:\n{self.adaptible_smart_stats}\n\nCur pool:\n{pool}\n')
+                relat = open(f'adapt_rates.txt', 'a') 
+                relat.write(f'--- POOL ---\n')   
+                relat.write(str(pool))
+                relat.write('\n\n')
+                relat.close()
+            
             
             #print(f'da CHOICE:{fit_choice} <-----')
             #print(f'pooool:{pool}...END\n\n')
             #print(fit_choice[0])
             #print(fit_choice[0][0])
+            relat = open(f'adapt.txt', 'w')    
+
 
             match fit_choice[0][0]:
                 case 'cos_progressive':

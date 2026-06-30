@@ -7,10 +7,11 @@ import cv2
     
     
     
-def to_grayscale(img):
+def to_grayscale(image):
     #mask = img[:,:,3] == 0
     #img[mask] = [255,255,255,255]
     #img[mask] = [0,255,0,255]
+    img = np.copy(image)
     temp_img = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
     for i in range(img.shape[0]):
         for j in range(img.shape[1]):
@@ -72,3 +73,58 @@ def safe_minimum(num):
 
 def safe_weight(total, rel):
     return safe_minimum(int_ratio(total, rel))
+
+edge_mat_1 = [
+    [ 0, -1, 0],
+    [-1, 4, -1],
+    [ 0, -1, 0]
+    ]
+
+edge_mat_2 = [
+    [-1, -1, -1],
+    [-1,  8, -1],
+    [-1, -1, -1]
+    ]
+
+def find_edges(img):
+    g_img = to_grayscale(img)
+    
+    edge_mat_1 = [
+    [ 0, -1, 0],
+    [-1, 4, -1],
+    [ 0, -1, 0]
+    ]
+
+    edge_mat_2 = [
+    [-1, -1, -1],
+    [-1,  8, -1],
+    [-1, -1, -1]
+    ]
+    
+    '''edge_mat_3 = [
+    [1, 0, -1],
+    [1, 0, -1],
+    [1, 0, -1]
+    ]
+    
+    edge_mat_4 = [
+        [ 1,  1,  1],
+        [ 0,  0,  0],
+        [-1, -1, -1]
+    ]'''
+
+    border_bool = [[[False, False, False, False] for _ in range(g_img.shape[1])]
+               for _ in range(g_img.shape[0])]
+
+
+    for i in range(img.shape[0]-2):
+        for j in range(img.shape[1]-2):
+            mat_1_sum = 0
+            mat_2_sum = 0
+            for im in range(len(edge_mat_1)):
+                for jm in range (len(edge_mat_1[0])):
+                    mat_1_sum += int(g_img[i + im][j + jm]) * edge_mat_1[im][jm]
+                    mat_2_sum += int(g_img[i + im][j + jm]) * edge_mat_2[im][jm]
+            border_bool[i][j] = [(abs(mat_1_sum) > 127), (abs(mat_2_sum) > 127)]
+    
+    return border_bool

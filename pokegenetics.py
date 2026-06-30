@@ -458,23 +458,23 @@ def main():
     
     poke_gen = PokeGenetics(
         # Número da Dex do Pokémon alvo, único parametro não opcional
-        target_dex="144",
+        target_dex="159",
         # Qual set de sprites será utilizado, atualmente apenas 1 -> (56x56, 151 sprites) e 9-> (96x96, 1100+ sprites)
         generation=2,
         # Tamanho padrão da população
-        pop_size=100,
+        pop_size=32,
         # Chance de acontecer mutação pra cada membro da nova geração (ignora elitismo)
         mutation_rate=0.05,
         # Porcentagem da população a ser povoada por crossover
-        crossover_rate=0.6,
+        crossover_rate=0.667,
         # Geração máxima
-        max_gen=5000, 
+        max_gen=10000, 
         # Tipo de avaliação usada (atualmente RGBA e Grayscale)
-        score_type='Perfect',
+        score_type='Border',
         #score_type='Grayscale',
         #score_type='perfect',
         # Regulação automatica dos valores crossover_rate, mutation_rate e elitism_rate.
-        auto_reg=True,
+        auto_reg=False,
         # Tipo de regulação automatica, entre Standard, Wave, Chaotic e None
         regulate_type='wave',
         # Se a regulação automática, quando ativada, deveria alterar o tamanho da população
@@ -490,7 +490,8 @@ def main():
         #crossover_type=['swap_binary', 'bisect', 'swap_simple', 'swap_serial', 'swap_channels', 'contrast', 'mesh_essential', 'mesh_mini','mesh_subtract'],
         crossover_type=['mesh_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mesh_mini', 'checker_stack', 'swap_squared', 'mesh_subtract'],
         # Tipo de fitness a seguir
-        fitness_type='adaptible_learner',
+        #fitness_type='adaptible_learner',
+        fitness_type='cos_progressive',
         # Salva imagens de todas as populações geradas em 'runs'
         save_all_imgs=False,
         # Faz shinys serem faceis de achar
