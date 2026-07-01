@@ -167,14 +167,14 @@ class Pokedex():
     def aval_target_grayscale(self, ref_mon, acc_mon):
         score = np.int32(0)
 
-        '''ref_grey = utils.to_grayscale(ref_mon[2])
-        acc_grey = utils.to_grayscale(acc_mon[0])
+        ref_grey = utils.to_grayscale(np.copy(ref_mon[2]))
+        acc_grey = utils.to_grayscale(np.copy(acc_mon[0]))
 
-        for j in range(0, 96):
-            for k in range(0, 96):
-                score += np.int32(255 - abs(np.int32(ref_grey[j][k]) - acc_grey[j][k]))'''
+        for j in range(0, len(ref_grey)):
+            for k in range(0, len(ref_grey)):
+                score += np.int32(255 - abs(np.int32(ref_grey[j][k]) - acc_grey[j][k]))
 
-        for j in range(0, len(ref_mon[2])):
+        '''for j in range(0, len(ref_mon[2])):
             for k in range(0, len(ref_mon[2])):
                 if ref_mon[2][j][k][3] != acc_mon[0][j][k][3]:
                     continue
@@ -188,20 +188,20 @@ class Pokedex():
                     score += np.int32(255 - abs(ref_mean - acc_mean))
                 
                     #print(f'{len(ref_mon)}-{len(ref_mon[2])}-{len(ref_mon[2])}')
-                    #print(f'{len(acc_mon)}-{len(acc_mon[0])}-{len(acc_mon)}')
+                    #print(f'{len(acc_mon)}-{len(acc_mon[0])}-{len(acc_mon)}')'''
         return score
     
     def aval_target_binary(self, ref_mon, acc_mon):
         score = np.int32(0)
 
-        '''ref_grey = utils.to_grayscale(ref_mon[2])
-        acc_grey = utils.to_grayscale(acc_mon[0])
+        ref_bw = utils.to_black_n_white(np.copy(ref_mon[2]))
+        acc_bw = utils.to_black_n_white(np.copy(acc_mon[0]))
 
-        for j in range(0, 96):
-            for k in range(0, 96):
-                score += np.int32(255 - abs(np.int32(ref_grey[j][k]) - acc_grey[j][k]))'''
+        for j in range(0, len(ref_bw)):
+            for k in range(0, len(ref_bw)):
+                score += (1 * (ref_bw[j][k] == acc_bw[j][k]))
 
-        for j in range(0, len(ref_mon[2])):
+        '''for j in range(0, len(ref_mon[2])):
             for k in range(0, len(ref_mon[2])):
                 if ref_mon[2][j][k][3] != acc_mon[0][j][k][3]:
                     continue
@@ -218,7 +218,7 @@ class Pokedex():
                     score += (1 - abs(ref_bin - acc_bin))
                 
                     #print(f'{len(ref_mon)}-{len(ref_mon[2])}-{len(ref_mon[2])}')
-                    #print(f'{len(acc_mon)}-{len(acc_mon[0])}-{len(acc_mon)}')
+                    #print(f'{len(acc_mon)}-{len(acc_mon[0])}-{len(acc_mon)}')'''
         return score
     
     def aval_target_perfect(self, ref_mon, acc_mon):

@@ -25,16 +25,43 @@ def to_grayscale(image):
     return temp_img
 
 def to_black_n_white(img):
+    mk = img[:,:,3] == 0
+    t_im = np.copy(img)
+    t_im[mk] = [128,128,128,255]
+    
+    ref = to_grayscale(t_im)
+    
+    
+    mk2 = ref[:,:] >= 128
+    mk3 = ref[:,:] < 128
+    
+    #for i in range(ref.shape[0]):
+    #    for j in range(ref.shape[1]):
+    #        temp_img[i][j] = (ref[i][j]>= 128) * 255
+    
     temp_img = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
-    for i in range(img.shape[0]):
-        for j in range(img.shape[1]):
-            if img[i][j][3] < 255:
-                temp_img[i][j] = 128
-            else:
-                temp_img[i][j] = ((img[i][j].sum()//3) >= 128) * 255
+    temp_img[mk2] = 255
+    temp_img[mk3] = 0
     
     return temp_img
+
+def to_rgba(img):
+    temp_img = np.zeros((img.shape[0],img.shape[1], 4),dtype=np.uint8)
+
+    if len(img.shape) == 2:
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                for l in range(0,3):
+                    temp_img[i][j][l] = img[i][j]
+                temp_img[i][j][3] = 255
+    else:
+        for i in range(img.shape[0]):
+            for j in range(img.shape[1]):
+                for l in range(0,3):
+                    temp_img[i][j][l] = img[i][j][l]
+                temp_img[i][j][3] = 255
     
+    return temp_img    
 
 def array_remove_and_return(self, team, poke):
     for i, item in enumerate(team):
@@ -148,3 +175,15 @@ def get_difference_sprite(ref_mon, acc_mon):
 def resize_by_factor(img_array, factor):
     resized_len = len(img_array) * factor
     return cv2.resize(img_array, (resized_len, resized_len), interpolation=cv2.INTER_NEAREST)
+
+def get_color_list(img):
+    all_colors = set()
+    for _ in img:
+        for pk in img:
+            all_colors.add((pk[0], pk[1], pk[2]))
+    
+    color_list = list(all_colors)
+    print(len(color_list))
+    
+    return color_list
+    

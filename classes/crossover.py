@@ -6,6 +6,8 @@ from PIL import Image, ImageFile, ImageOps
 import matplotlib.colors as colors
 import cv2
 
+import classes.utils as utils
+
 debug = False
 
 class Crossover():
@@ -520,6 +522,13 @@ class Crossover():
         
         return child_a, child_b
         
+    def crossover_difference(self, img_a, img_b):
+        child_a = utils.get_difference_sprite(np.copy(img_a),np.copy(img_b))
+        child_b = utils.get_difference_sprite(np.copy(img_b),np.copy(img_a))
+        
+        return child_a, child_b
+        
+        
     # crossover: no-cross (as shrimple as that)
 
 
@@ -569,6 +578,8 @@ class Crossover():
                 c_a, c_b = self.crossover_swap_squared(img_a, img_b)
             case 'mix_subtract':
                 c_a, c_b = self.crossover_mix_subtract(img_a, img_b)
+            case 'difference':
+                c_a, c_b = self.crossover_difference(img_a, img_b)
             case 'no_cross':
                 c_a = img_a.copy()
                 c_b = img_b.copy()

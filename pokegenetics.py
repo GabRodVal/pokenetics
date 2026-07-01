@@ -112,7 +112,7 @@ class PokeGenetics():
             elitism=elitism,
             elitism_rate=elitism_rate,
             max_gen=max_gen,
-            score_type=score_type,
+            score_type=score_type.lower(),
             reg_pop=reg_pop,
             elitism_mutation=elitism_mutation,
             auto_regulate=auto_reg,
@@ -159,7 +159,7 @@ class PokeGenetics():
         self.elitism_mutation = elitism_mutation
         self.fitness_type = fitness_type
         self.elitism_rate = elitism_rate
-        self.score_type = score_type
+        self.score_type = score_type.lower()
         self.crossover_type = crossover_type
         
         self.verbose = verbose
@@ -242,16 +242,47 @@ class PokeGenetics():
             factor = math.ceil(256/most_fit_mon[0].shape[0])
 
             self.top_league.append(most_fit_mon)
-            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}g_{most_fit_mon[1]}.png', utils.resize_by_factor(most_fit_mon[0], factor)) 
+            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}g_{(most_fit_mon[1]/target_mon[3])*100:.2f}.png', utils.resize_by_factor(most_fit_mon[0], factor)) 
 
-            most_fit_difference = utils.get_difference_sprite(target_mon[2],most_fit_mon[0])
-            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_diff.png', utils.resize_by_factor(most_fit_difference, factor))
-        elif abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3])/10_000:
-            self.top_league.append(most_fit_mon)
-            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}g_{most_fit_mon[1]}.png', utils.resize_by_factor(most_fit_mon[0], 4))
             
-            most_fit_difference = utils.get_difference_sprite(target_mon[2],most_fit_mon[0])
-            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_diff.png', utils.resize_by_factor(most_fit_difference, 4))
+            if self.score_type != 'Grayscale'.lower() and self.score_type != 'BW'.lower():
+                most_fit_difference = utils.get_difference_sprite(target_mon[2],most_fit_mon[0])
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_diff.png', utils.resize_by_factor(most_fit_difference, factor))
+            
+            elif self.score_type == 'Grayscale'.lower():
+                most_fit_gray = utils.to_grayscale(np.copy(most_fit_mon[0]))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_gray.png', utils.resize_by_factor(most_fit_gray, factor))
+                most_fit_difference = utils.get_difference_sprite(utils.to_rgba(utils.to_grayscale(np.copy(target_mon[2]))), utils.to_rgba(most_fit_gray))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_graydiff.png', utils.resize_by_factor(most_fit_difference, factor))
+            
+            elif self.score_type == 'BW'.lower():
+                most_fit_bw = utils.to_black_n_white(np.copy(most_fit_mon[0]))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_bw.png', utils.resize_by_factor(most_fit_bw, factor))
+                most_fit_difference = utils.get_difference_sprite(utils.to_rgba(utils.to_black_n_white(np.copy(target_mon[2]))), utils.to_rgba(most_fit_bw))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_bwdiff.png', utils.resize_by_factor(most_fit_difference, factor))
+        
+        elif abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3])/10_000:
+            factor = math.ceil(256/most_fit_mon[0].shape[0])
+            
+            self.top_league.append(most_fit_mon)
+            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}g_{(most_fit_mon[1]/target_mon[3])*100:.2f}.png', utils.resize_by_factor(most_fit_mon[0], factor))
+            
+            if self.score_type != 'Grayscale'.lower() and self.score_type != 'BW'.lower():
+                most_fit_difference = utils.get_difference_sprite(target_mon[2],most_fit_mon[0])
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_diff.png', utils.resize_by_factor(most_fit_difference, factor))
+            
+            elif self.score_type == 'Grayscale'.lower():
+                most_fit_gray = utils.to_grayscale(np.copy(most_fit_mon[0]))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_gray.png', utils.resize_by_factor(most_fit_gray, factor))
+                most_fit_difference = utils.get_difference_sprite(utils.to_rgba(utils.to_grayscale(np.copy(target_mon[2]))), utils.to_rgba(most_fit_gray))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_graydiff.png', utils.resize_by_factor(most_fit_difference, factor))
+            
+            elif self.score_type == 'BW'.lower():
+                most_fit_bw = utils.to_black_n_white(np.copy(most_fit_mon[0]))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_bw.png', utils.resize_by_factor(most_fit_bw, factor))
+                most_fit_difference = utils.get_difference_sprite(utils.to_rgba(utils.to_black_n_white(np.copy(target_mon[2]))), utils.to_rgba(most_fit_bw))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_bwdiff.png', utils.resize_by_factor(most_fit_difference, factor))
+            
         if len(self.top_league) > 1000:
                 self.top_league = self.top_league[:500] + self.top_league[-500:]
 
@@ -348,6 +379,9 @@ class PokeGenetics():
         
         #plt.show()
 
+
+    #REWORK
+    #Only stats return, no string
     def get_run_stats(self):
         target = self.party.get_target_pokemon()
         return {
@@ -506,7 +540,7 @@ def main():
         #strong
         #crossover_type=['swap_binary', 'bisect', 'swap_simple', 'swap_serial', 'swap_channels', 'contrast', 'mix_essential', 'mix_mini','mix_subtract','swap_chunks'],
         #all
-        #crossover_type=['mix_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mix_mini', 'checker_stack', 'swap_squared', 'mix_subtract','swap_chunks'],
+        #crossover_type=['mix_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mix_mini', 'checker_stack', 'swap_squared', 'mix_subtract','swap_chunks','difference'],
         # Tipo de fitness a seguir
         #fitness_type='adaptable_learner',
         fitness_type='cos_progressive',
@@ -524,9 +558,21 @@ def main():
                    generations=['icon'],
                    pop_size=[20],
                    crossover_type=[['swap_chunks', 'bisect', 'swap_simple', 'swap_binary', 'swap_channels', 'swap_colors']],
-                   score_type=['RGBA', 'Perfect', 'Grayscale', 'BW'],
+                   score_type=['BW'],
                    fitness_type=['adaptable_learner'],
+                   elitism_mutation=[True],
+                   regulate_type=['wave'],
                    max_gen=[10000])
+    
+    '''run_experiment(target_dex=["244"],
+                   generations=['icon'],
+                   pop_size=[20],
+                   crossover_type=[['swap_chunks', 'bisect', 'swap_simple', 'swap_binary', 'swap_channels', 'swap_colors']],
+                   score_type=['Grayscale', 'BW', 'RGBA', 'Perfect', 'Border'],
+                   fitness_type=['adaptable_learner'],
+                   elitism_mutation=[True],
+                   regulate_type=['wave'],
+                   max_gen=[10000])'''
     
     #run_experiment(target_dex=['244'], generations=[2,9], score_type=['RGBA', 'Grayscale', 'BW', 'Perfect'])
     '''crossovers_to_test = [

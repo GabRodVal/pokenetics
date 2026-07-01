@@ -230,7 +230,7 @@ class Party():
             if self.elitism_mutation:
                 fittest_few.append(self.mutation.mutate(np.copy(most_fit_mon[0])))
             fittest_few.append(most_fit_mon[0])
-            if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{most_fit_mon[1]}_SR0.png', most_fit_mon[0])
+            if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100}_SR0.png', most_fit_mon[0])
         
         for iter in range(len(self.team)):
             if self.elitism and (len(fittest_few) < self.pop_size * self.elitism_rate) and len(sorted_team) > 0:
@@ -241,10 +241,10 @@ class Party():
                 else:
                     fittest_few.append(heir[0])
                 
-                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{heir[1]}_R{iter}.png', heir[0])
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(heir[1]/self.target_mon[3])*100}_R{iter}.png', heir[0])
             elif self.save_all_imgs and len(sorted_team) > 0:
                 old_poke = sorted_team.pop()
-                imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{old_poke[1]}_C{iter}.png', old_poke[0])
+                imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(old_poke[1]/self.target_mon[3])*100}_C{iter}.png', old_poke[0])
         
         self.team.clear()
         
