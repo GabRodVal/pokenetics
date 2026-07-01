@@ -65,7 +65,7 @@ def remove_dupes(team):
 def int_ratio(total, rel):
     res = rel/max(total, 0.0001)
             ####1..4..7..T
-    pct = res * 10000000
+    pct = res * 10_000_000
     return int(pct)
 
 def safe_minimum(num):
@@ -113,7 +113,7 @@ def find_edges(img):
         [-1, -1, -1]
     ]'''
 
-    border_bool = [[[False, False, False, False] for _ in range(g_img.shape[1])]
+    border_bool = [[[False, False] for _ in range(g_img.shape[1])]
                for _ in range(g_img.shape[0])]
 
 
@@ -128,3 +128,23 @@ def find_edges(img):
             border_bool[i][j] = [(abs(mat_1_sum) > 127), (abs(mat_2_sum) > 127)]
     
     return border_bool
+
+def get_difference_sprite(ref_mon, acc_mon):
+    diff_sprite = np.zeros_like(ref_mon)
+
+    for j in range(0, len(ref_mon)):
+        for k in range(0, len(ref_mon)):
+            if (ref_mon[j][k][3] == 255 and acc_mon[j][k][3] == 0) or (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 255):
+                diff_sprite[j][k] = [255,255,255,255]
+            elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
+                diff_sprite[j][k] = [0,0,0,255]
+            else:
+                for l in range (0, 3):
+                    diff_sprite[j][k][l] = np.int32(abs(np.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
+                diff_sprite[j][k][3] = 255
+        
+    return diff_sprite
+
+def resize_by_factor(img_array, factor):
+    resized_len = len(img_array) * factor
+    return cv2.resize(img_array, (resized_len, resized_len), interpolation=cv2.INTER_NEAREST)

@@ -16,7 +16,7 @@ class Party():
             self,
             target_dex,
             easy_shiny=False,
-            generation=9,
+            generation='9',
             pop_size=40,
             crossover_rate=0.72,
             mutation_rate=0.02,
@@ -28,7 +28,7 @@ class Party():
             regulate_type='wave',
             elitism=True,
             elitism_mutation=False,
-            crossover_type=['bisect', 'swap_simple', 'swap_even', 'swap_sensible', 'swap_serial', 'swap_colors'],
+            crossover_type=['bisect', 'swap_simple', 'swap_even', 'swap_cheater_rgba', 'swap_serial', 'swap_colors'],
             fitness_type='normalize',
             verbose=False,
             save_all_imgs=True
@@ -122,18 +122,18 @@ class Party():
 
 
     def regulate_self_standard(self):
-        self.crossover_rate = max(min(0.92, (self.og_crossover_rate/2) + (0.92 - ((self.og_crossover_rate/2))/(self.cur_gen/self.max_gen))), (self.og_crossover_rate/2))
-        self.mutation_rate = max(min(0.12, (self.og_mutation_rate/2) + ((0.12,0 - (self.og_mutation_rate/2))/(self.cur_gen/self.max_gen))), (self.og_mutation_rate/2))
+        self.crossover_rate = 0.48 + (0.36 - (0.36*(self.cur_gen/self.max_gen)))
+        self.mutation_rate = 0.005 + max(0.155 - (0.155 * ((self.max_gen - self.cur_gen)/self.max_gen)), 0)
         
-        if self.elitism:
-            self.elitism_rate = max(min(0.50, (self.og_elitism_rate/2) + ((0.50 - (self.og_elitism_rate/2))/(self.cur_gen/self.max_gen))), self.og_elitism_rate/2)
+        #if self.elitism:
+        #    self.elitism_rate = max(min(0.50, (self.og_elitism_rate/2) + ((0.50 - (self.og_elitism_rate/2))/(self.cur_gen/self.max_gen))), self.og_elitism_rate/2)
 
         if self.reg_pop:
             self.pop_size = math.floor(max(8, (np.int32(self.og_pop_size * (1.5 * (self.cur_gen/self.max_gen))))))
 
-        fit_reg = False
-        if fit_reg:
-            self.fitness_rate = max(8, (np.int32(self.pop_size * (1.5 * (self.cur_gen/self.max_gen)))))
+        #fit_reg = False
+        #if fit_reg:
+        #    self.fitness_rate = max(8, (np.int32(self.pop_size * (1.5 * (self.cur_gen/self.max_gen)))))
 
     def regulate_self_chaotic(self):
         match randint(0,2):
@@ -181,9 +181,9 @@ class Party():
         mama, papa = self.fitness.selection()
         c_a, c_b = self.crossover.crossover_couple(mama, papa)
 
-        if randint(0, 10000) < (self.mutation_rate * 10000):
+        if randint(0, 100_000) < (self.mutation_rate * 100_000):
             c_a = self.mutation.mutate(c_a)
-        if randint(0, 10000) < (self.mutation_rate * 10000):
+        if randint(0, 100_000) < (self.mutation_rate * 100_00):
             c_b = self.mutation.mutate(c_b)
 
         return c_a, c_b
@@ -227,6 +227,8 @@ class Party():
         sorted_team = sorted(self.team, key=lambda x: x[1])
         if self.elitism:
             most_fit_mon = sorted_team.pop()
+            if self.elitism_mutation:
+                fittest_few.append(self.mutation.mutate(np.copy(most_fit_mon[0])))
             fittest_few.append(most_fit_mon[0])
             if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{most_fit_mon[1]}_SR0.png', most_fit_mon[0])
         
@@ -234,7 +236,7 @@ class Party():
             if self.elitism and (len(fittest_few) < self.pop_size * self.elitism_rate) and len(sorted_team) > 0:
                 # or... just sort it once and pop shit until you're done
                 heir = sorted_team.pop()
-                if self.elitism_mutation: #conditional?
+                if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000): #conditional?
                     fittest_few.append(self.mutation.mutate(heir[0]))
                 else:
                     fittest_few.append(heir[0])
@@ -259,13 +261,13 @@ class Party():
         #    self.team.append(pk)
             
         if dupelen != unqlen and debug:
-            print(f'Duplicatas removidas: Tam. Equipe {dupelen} -> {unqlen} (-{dupelen-unqlen})')
+            print(f'\033[94m [Duplicatas removidas: Tam. Equipe {dupelen} -> {unqlen} (-{dupelen-unqlen})] \033[0m')
 
         if len(self.team) < self.pop_size:
             poke_keys = self.pokedex.get_pokedex_keys()
             search_list = choices(poke_keys, k=(self.pop_size - len(self.team)))
             for dk in search_list:
-                if randint(0, 10000) < (self.mutation_rate * 10000):
+                if randint(0, 100_000) < (self.mutation_rate * 100_000):
                     self.team.append([self.mutation.mutate(self.pokedex.get_another_pokemon(dk)), 0])
                 else:
                     self.team.append([self.pokedex.get_another_pokemon(dk), 0])
@@ -277,7 +279,7 @@ class Party():
         '''elif self.score_type == 'Grayscale'.lower():
             for it in range(len(self.team)):
                 self.team[it][1] = self.pokedex.aval_target_grayscale(self.target_mon, self.team[it])
-        elif self.score_type == 'Binary'.lower():
+        elif self.score_type == 'BW'.lower():
             for it in range(len(self.team)):
                 self.team[it][1] = self.pokedex.aval_target_binary(self.target_mon, self.team[it])
         elif self.score_type == 'Perfect'.lower():

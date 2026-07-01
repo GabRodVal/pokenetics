@@ -9,25 +9,36 @@ import cv2
 debug = False
 
 class Pokedex():
-    def __init__(self, target_dex, score_type='RGBA', easy_shiny=False, generation=9):
+    def __init__(self, target_dex, score_type='RGBA', easy_shiny=False, generation='9'):
         
         self.generation = generation
 
-        if self.generation >= 6:
+        print(self.generation)
+        if self.generation == '6':
             self.dim = (96, 96, 4)
             with open('sprites\\g9\\poke_sprite_data.json') as poke_data:
                 pokeJSON = json.load(poke_data)
                 poke_data.close()
-        elif self.generation == 3:
+        elif self.generation == '3':
             self.dim = (64, 64, 4)
-        elif self.generation  == 2:
+        elif self.generation  == '2':
             self.dim = (56, 56, 4)
             with open('sprites\\g2\\poke_sprite_data.json') as poke_data:
                 pokeJSON = json.load(poke_data)
                 poke_data.close()
-        elif self.generation  == 1:
+        elif self.generation  == '1':
             self.dim = (56, 56, 4)
             with open('sprites\\g1\\poke_sprite_data.json') as poke_data:
+                pokeJSON = json.load(poke_data)
+                poke_data.close()
+        elif self.generation  == 'icon':
+            self.dim = (32, 32, 4)
+            with open('sprites\\gicon\\poke_sprite_data.json') as poke_data:
+                pokeJSON = json.load(poke_data)
+                poke_data.close()
+        elif self.generation  == '4-icon':
+            self.dim = (256, 256, 4)
+            with open('sprites\\g4-icon\\poke_sprite_data.json') as poke_data:
                 pokeJSON = json.load(poke_data)
                 poke_data.close()
         else:
@@ -50,7 +61,7 @@ class Pokedex():
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255*3)) ]
         elif self.score_type == 'Grayscale'.lower():
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255)) ]
-        elif self.score_type == 'Binary'.lower() or self.score_type == 'Perfect'.lower():
+        elif self.score_type == 'BW'.lower() or self.score_type == 'Perfect'.lower():
             self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(1)) ]
         elif self.score_type == 'Border'.lower():
             self.target_border_matrix = utils.find_edges(target_image)
@@ -73,10 +84,10 @@ class Pokedex():
 
         # use shiny_descendant as a (papa.shiny_descendant or mama.shiny_descendant) to know if its shiny descendant
         # also implement realistic_shiny -> True for randint(0, 8192) or False for randint(1, 100) or custom'
-        
-        if self.easy_shiny and randint(1, 8) == 1 and self.generation>1:
+        gen_has_shiny = (self.generation != '1' and self.generation != 'icon' and self.generation != '4-icon')
+        if self.easy_shiny and randint(1, 8) == 1 and gen_has_shiny:
             img_arch = np.array(Image.open(f'sprites\\g{self.generation}\\{self.pokedex[dex]["sprite_shiny"]}').convert("RGBA"), dtype=np.uint8)
-        elif randint(1, 8192) == 1 and self.generation>1:
+        elif randint(1, 8192) == 1 and gen_has_shiny:
             print(f'------- A wild [{dex}] {(self.pokedex[dex]["name"]).capitalize()} has appeared. It\'s Shiny! -------')
             img_arch = np.array(Image.open(f'sprites\\g{self.generation}\\{self.pokedex[dex]["sprite_shiny"]}').convert("RGBA"), dtype=np.uint8)
         else:
@@ -125,7 +136,7 @@ class Pokedex():
             score = self.aval_target_standard(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'Grayscale'.lower():
             score = self.aval_target_grayscale(ref_mon=ref_mon, acc_mon=acc_mon)
-        elif self.score_type == 'Binary'.lower():
+        elif self.score_type == 'BW'.lower():
             score = self.aval_target_binary(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'Perfect'.lower():
             score = self.aval_target_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
@@ -228,6 +239,21 @@ class Pokedex():
     # full pix equal -> 6 pts
     # full alpha0 equal -> 4pts
     # channel equal -> 1pt
+    '''score = np.int32(0)
+
+        for j in range(0, len(ref_mon[2])):
+            for k in range(0, len(ref_mon[2])):
+                if (ref_mon[2][j][k][3] == 255 and acc_mon[0][j][k][3] == 0) or (ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 255):
+                    continue
+                elif ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 0:
+                    #score += np.int32(255*4)
+                    score += np.int32(255*3)
+                else:
+                    #for l in range (0, 4):
+                    for l in range (0, 3):
+                        score += np.int32(255 - abs(np.int32(ref_mon[2][j][k][l]) - acc_mon[0][j][k][l]))
+            
+        return score'''
     
     def aval_target_borders(self, ref_mon, acc_mon):
         score = np.int32(0)
@@ -236,26 +262,25 @@ class Pokedex():
             for k in range(0, len(ref_mon[2])):
                 base_score = 0
                 
-                if ref_mon[2][j][k][3] != acc_mon[0][j][k][3]:
+                if (ref_mon[2][j][k][3] == 255 and acc_mon[0][j][k][3] == 0) or (ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 255):
                     continue
-                elif np.array_equal(ref_mon[2][j][k], acc_mon[0][j][k]) or ((ref_mon[2][j][k][3] == acc_mon[0][j][k][3]) and (acc_mon[0][j][k][3] == 0)):
-                    base_score = int(((((255 * 3) * 1.5)* 1.5) * 1.5)* 1.5)
-                else:
-                    for l in range(3):
-                        diff = abs(np.int32(ref_mon[2][j][k][l]) - acc_mon[0][j][k][l])
-                        base_score += (255 - diff)
-                        if diff < 64:
-                            base_score = int(base_score * 1.5)
-                            if diff < 32:
-                                base_score = int(base_score * 1.5)
-                                if diff == 0:
-                                    base_score = int(base_score * 1.5)
+                elif ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 0:
+                    base_score += 1
+                elif np.array_equal(ref_mon[2][j][k], acc_mon[0][j][k]):
+                    base_score += 1
+                #else:
+                #    for l in range(3):
+                #        base_score += np.int32(255 - abs(np.int32(ref_mon[2][j][k][l]) - acc_mon[0][j][k][l]))
                             
-                
-                full_score = base_score + (base_score * (2 * self.target_border_matrix[j][k][0])) + (base_score * self.target_border_matrix[j][k][1])
-                score += full_score
+                if self.target_border_matrix[j][k][0]:
+                    base_score = base_score * 2
+                if self.target_border_matrix[j][k][1]:
+                    base_score = base_score * 2
+                    
+                score += base_score
         
         return score
+    
     
     ##########################################
 

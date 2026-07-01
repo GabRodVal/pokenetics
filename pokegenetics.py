@@ -14,6 +14,7 @@ from statistics import mean
 import keyboard
 
 import classes.party
+import classes.utils as utils
 
 debug = False
 seed(25696969)
@@ -22,17 +23,17 @@ seed(25696969)
 # Add Visual Crossover
 class CrossoverType(Enum):
     #   Métodos de Crossover
-    ##  Mesh - Métodos que mesclam pixels
+    ##  Mix - Métodos que mesclam pixels
     ### Mescla pixels com alfa > 0, se não, troca pelo pixel visivel
-    MESH_ESSENTIAL = 'mesh_essential'
+    MIX_ESSENTIAL = 'mix_essential'
     ### Mescla todos os pixels
-    MESH_FULL = 'mesh_full'
+    MIX_FULL = 'mix_full'
     ### Mescla as cores
-    MESH_COLOR = 'mesh_color'
+    MIX_COLOR = 'mix_color'
     ### Mescla pixels de acordo com o pokemon alvo
-    MESH_SMART = 'mesh_smart'
-    ### Pra cada crossover, seleciona um metodo Mesh aleatorio.
-    MESH_ALL = 'mesh_all'
+    MIX_SMART = 'mix_smart'
+    ### Pra cada crossover, seleciona um metodo Mix aleatorio.
+    MIX_ALL = 'mix_all'
     ##  Swap - Métodos que trocam pixels
     ### Parte ambos os pokemon ao meio e junta as partes diferentes
     SWAP_BISECT = 'bisect'
@@ -43,19 +44,19 @@ class CrossoverType(Enum):
     ### Troca um pixel sim, um pixel não
     SWAP_EVEN = 'swap_even'
     ### Troca pixels de acordo com o pokemon alvoAdd commentMore actions
-    SWAP_CHEATING = 'swap_sensible'
+    SWAP_CHEATING = 'swap_cheater_rgba'
     ### Troca varios pixels em sequencia
     SWAP_SERIAL = 'swap_serial'
     ### Pra cada crossover, seleciona um metodo Swap aleatorio.
     SWAP_SMART = 'swap_smart'
-    ### Pra cada crossover, seleciona um metodo Mesh aleatorio, exceto swap_sensible
+    ### Pra cada crossover, seleciona um metodo Mix aleatorio, exceto swap_cheater_rgba
     SWAP_DUMB = 'swap_dumb'
     ### Troca as cores dos pokemon
     SWAP_COLOR = 'swap_colors'
     ## Extras
-    ### Pra cada crossover, seleciona um metodo aleatorio, com exceção de swap_sensible e mesh_smart
+    ### Pra cada crossover, seleciona um metodo aleatorio, com exceção de swap_cheater_rgba e mix_smart
     CHAOTIC = 'chaotic_dumb'
-    ### Seleciona entre swap_sensible e mesh_smart
+    ### Seleciona entre swap_cheater_rgba e mix_smart
     SMART = 'smart_only'
     ### Pra cada crossover, seleciona um metodo aleatorio.
     ALL_IN = 'chaotic_smart'
@@ -71,7 +72,7 @@ class PokeGenetics():
     def __init__(
             self,
             target_dex,
-            generation=9,
+            generation='9',
             pop_size=40,
             mutation_rate=0.05,
             crossover_rate=0.6,
@@ -82,13 +83,13 @@ class PokeGenetics():
             elitism=True,
             elitism_mutation=False,
             crossover_type=[
-                'mesh_essential',
+                'mix_essential',
                 'bisect',
                 'swap_simple',
                 'swap_channels',
                 'swap_binary',
                 'contrast',
-                'mesh_mini'
+                'mix_mini'
                 ],
             fitness_type='normalize',
             regulate_type='none',
@@ -202,7 +203,6 @@ class PokeGenetics():
         
         self.party.set_fitness_no_progress(self.no_change_turns, self.cur_gen)
         if self.verbose:
-            print(f'\n\033[0m')
             if self.cur_gen == 1:
                 self.first_stamp = datetime.datetime.now().timestamp()
                 self.old_score = self.cur_score
@@ -217,7 +217,7 @@ class PokeGenetics():
                     print(f'\033[93m{lab}{self.cur_gen:03d}° Gen - Resultado: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% ({((self.cur_score/target_mon[3]) * 100):.3f}%) | {(self.cur_score)}pts (={(abs(self.cur_score - self.old_score)):06d}pts) -> ({(target_mon[3]-self.cur_score)}pts/{(target_mon[3]-self.first_score)}pts) | {(self.cur_stamp - self.old_stamp):.1f}s -> {(self.cur_stamp - self.first_stamp):.1f}s')
 
         if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - CoR: {stats[1] * 100:.2f}% | Mut: {stats[2] * 100:.2f}% | Elt: {stats[3] * 100:.2f}% | Pop: {stats[0]}')
-        if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - Rodadas sem mudança: {self.no_change_turns} (Max. {self.no_change_max}) | Tot. {self.no_change_total}')
+        if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - Rodadas sem mudança: {self.no_change_turns} (Max. {self.no_change_max}) | Tot. {self.no_change_total}\033[0m')
 
         self.h_scores.append(((self.cur_score/target_mon[3]) * 100))        
         if self.cur_gen == 1:
@@ -236,17 +236,29 @@ class PokeGenetics():
         self.old_stamp = self.cur_stamp
         #self.fitness_values.append(self.fitness_rate)
 
+
+        
         if len(self.top_league) < 1:
+            factor = math.ceil(256/most_fit_mon[0].shape[0])
+
             self.top_league.append(most_fit_mon)
-        elif abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3])/10000:
+            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}g_{most_fit_mon[1]}.png', utils.resize_by_factor(most_fit_mon[0], factor)) 
+
+            most_fit_difference = utils.get_difference_sprite(target_mon[2],most_fit_mon[0])
+            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_diff.png', utils.resize_by_factor(most_fit_difference, factor))
+        elif abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3])/10_000:
             self.top_league.append(most_fit_mon)
+            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}g_{most_fit_mon[1]}.png', utils.resize_by_factor(most_fit_mon[0], 4))
+            
+            most_fit_difference = utils.get_difference_sprite(target_mon[2],most_fit_mon[0])
+            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_diff.png', utils.resize_by_factor(most_fit_difference, 4))
         if len(self.top_league) > 1000:
                 self.top_league = self.top_league[:500] + self.top_league[-500:]
 
     def hall_of_fame(self):
         top_gif = []
         for iter in range(len(self.top_league)):
-            imio.imwrite(f'{self.base_dir}/best/{iter+1}_s{self.top_league[iter][1]}.png', self.top_league[iter][0])
+        #    imio.imwrite(f'{self.base_dir}/best/{iter+1}_s{self.top_league[iter][1]}.png', self.top_league[iter][0])
 
             champ_img = np.array(self.top_league[iter][0])
             mk = champ_img[:, :, 3] == 0
@@ -254,7 +266,7 @@ class PokeGenetics():
             mk2 = champ_img[:, :, 3] < 255
             champ_img[mk2, 3] = 255
 
-            champ_img = Image.fromarray(champ_img).resize((480, 480), Image.Resampling.NEAREST)
+            champ_img = Image.fromarray(champ_img).convert("RGB").resize((480, 480), Image.Resampling.NEAREST)
 
             if iter == 0 or iter == (len(self.top_league)-1):
                 for _ in itertools.repeat(None, max(min(10, math.ceil(len(self.top_league)/20)), 8)):
@@ -379,7 +391,7 @@ class PokeGenetics():
         self.old_stamp = self.first_stamp
         target_mon = self.party.get_target_pokemon()
 
-        self.base_dir = f'runs/{str(self.first_stamp)[:7]}-{str(self.first_stamp)[-7:]}-{target_mon[1]}-{self.score_type}-{f'G{self.generation}'}-{self.crossover_type[0]}-{'pp-' * (len(self.crossover_type)>=2)}p{self.pop_size}g{self.max_gen}'
+        self.base_dir = f'runs/{(f'SE{self.serial_label:02d}-')*self.serial_experiment}{str(self.first_stamp)[1:8]}-{target_mon[1]}-{self.score_type}-{f'G{self.generation}'}-{self.crossover_type[0]}-{'pp-' * (len(self.crossover_type)>=2)}p{self.pop_size}g{self.max_gen}'
         self.party.set_base_dir(self.base_dir)
 
         self.create_dir(cur_dir=self.base_dir)
@@ -396,6 +408,9 @@ class PokeGenetics():
         for _ in range(self.max_gen):
             if self.save_all_imgs: self.create_dir(cur_dir=f'{self.base_dir}/gen_{self.cur_gen}')
             
+            if self.auto_regulate:
+                self.party.regulate_self()
+            
             if (self.cur_score/target_mon[3]) > 0.985:
                 self.quit_loop = True
             if self.quit_loop:
@@ -408,8 +423,7 @@ class PokeGenetics():
             self.register_stats()
             
 
-            if self.auto_regulate:
-                self.party.regulate_self()
+            
 
             
         self.hall_of_fame()
@@ -456,68 +470,69 @@ class PokeGenetics():
 '''
 def main():
     
-    poke_gen = PokeGenetics(
+    '''poke_gen = PokeGenetics(
         # Número da Dex do Pokémon alvo, único parametro não opcional
-        target_dex="159",
+        target_dex="158",
         # Qual set de sprites será utilizado, atualmente apenas 1 -> (56x56, 151 sprites) e 9-> (96x96, 1100+ sprites)
-        generation=2,
+        generation='icon',
         # Tamanho padrão da população
-        pop_size=32,
+        pop_size=100,
         # Chance de acontecer mutação pra cada membro da nova geração (ignora elitismo)
         mutation_rate=0.05,
         # Porcentagem da população a ser povoada por crossover
         crossover_rate=0.667,
         # Geração máxima
-        max_gen=10000, 
+        max_gen=1000, 
         # Tipo de avaliação usada (atualmente RGBA e Grayscale)
-        score_type='Border',
+        score_type='RGBA',
         #score_type='Grayscale',
         #score_type='perfect',
         # Regulação automatica dos valores crossover_rate, mutation_rate e elitism_rate.
-        auto_reg=False,
+        auto_reg=True,
         # Tipo de regulação automatica, entre Standard, Wave, Chaotic e None
         regulate_type='wave',
         # Se a regulação automática, quando ativada, deveria alterar o tamanho da população
-        reg_pop=False,
+        reg_pop=True,
         # Se os melhores da geração passada deveriam ser transferidos para a nova geração
         elitism=True,
         # Habilita a chance de elitismo acontecer com Pokémon inseridos por elitismo
-        elitism_mutation=False,
+        elitism_mutation=True,
         # Porcentagem da população a ser preenchida por elitismo
-        elitism_rate=0.08,
+        elitism_rate=0.16,
         # Tipo de crossover
         #spc
-        #crossover_type=['swap_sensible'],
+        crossover_type=['swap_colors'],
+        #crossover_type=['swap_chunks', 'bisect', 'swap_simple', 'swap_binary', 'swap_channels', 'swap_colors'],
         #strong
-        crossover_type=['swap_binary', 'bisect', 'swap_simple', 'swap_serial', 'swap_channels', 'contrast', 'mesh_essential', 'mesh_mini','mesh_subtract'],
+        #crossover_type=['swap_binary', 'bisect', 'swap_simple', 'swap_serial', 'swap_channels', 'contrast', 'mix_essential', 'mix_mini','mix_subtract','swap_chunks'],
         #all
-        #crossover_type=['mesh_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mesh_mini', 'checker_stack', 'swap_squared', 'mesh_subtract'],
+        #crossover_type=['mix_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mix_mini', 'checker_stack', 'swap_squared', 'mix_subtract','swap_chunks'],
         # Tipo de fitness a seguir
-        #fitness_type='adaptible_learner',
+        #fitness_type='adaptable_learner',
         fitness_type='cos_progressive',
         # Salva imagens de todas as populações geradas em 'runs'
         save_all_imgs=True,
         # Faz shinys serem faceis de achar
-        easy_shiny=True
+        easy_shiny=False
         )
     
     jooj = poke_gen.run()
     
-    print(jooj)
+    print(jooj)'''
     
-    '''run_experiment(target_dex=["151"],
-                   generations=[1,2,9],
-                   pop_size=[50],
-                   fitness_type=['normalize', 'cos2', 'sin_half'],
-                   crossover_type=[['swap_binary', 'bisect', 'swap_simple', 'swap_serial', 'swap_channels', 'contrast', 'mesh_essential', 'mesh_mini','mesh_subtract']],
-                   score_type=['RGBA'],
-                   max_gen=[200])'''
+    run_experiment(target_dex=["244"],
+                   generations=['icon'],
+                   pop_size=[20],
+                   crossover_type=[['swap_chunks', 'bisect', 'swap_simple', 'swap_binary', 'swap_channels', 'swap_colors']],
+                   score_type=['RGBA', 'Perfect', 'Grayscale', 'BW'],
+                   fitness_type=['adaptable_learner'],
+                   max_gen=[10000])
     
-    #run_experiment(target_dex=['244'], generations=[2,9], score_type=['RGBA', 'Grayscale', 'Binary', 'Perfect'])
+    #run_experiment(target_dex=['244'], generations=[2,9], score_type=['RGBA', 'Grayscale', 'BW', 'Perfect'])
     '''crossovers_to_test = [
-        ['swap_sensible'],
+        ['swap_cheater_rgba'],
         ['no_cross'],
-        ['mesh_essential'],
+        ['mix_essential'],
         ['bisect'],
         ['multisect'],
         ['swap_simple'],
@@ -528,11 +543,11 @@ def main():
         ['swap_binary'],
         ['dark_n_light'],
         ['contrast'],
-        ['mesh_mini'],
+        ['mix_mini'],
         ['checker_stack'],
         ['swap_squared'],
-        ['mesh_subtract'],
-        ['mesh_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mesh_mini', 'checker_stack', 'swap_squared', 'mesh_subtract']
+        ['mix_subtract'],
+        ['mix_essential', 'bisect', 'multisect', 'swap_simple', 'swap_serial', 'swap_colors','swap_channels', 'swap_even', 'swap_binary', 'dark_n_light', 'contrast', 'mix_mini', 'checker_stack', 'swap_squared', 'mix_subtract']
         ]'''
 
 
@@ -540,17 +555,17 @@ def main():
 
 def run_experiment(
     target_dex=['001'],
-    generations=[9],
+    generations=['9'],
     pop_size=[100],
     max_gen=[100],
     crossover_type=[
-                'mesh_essential',
+                'mix_essential',
                 'bisect',
                 'swap_simple',
                 'swap_channels',
                 'swap_binary',
                 'contrast',
-                'mesh_mini'
+                'mix_mini'
                 ],
     regulate_type=['none'],
     elitism=[True],
@@ -561,7 +576,7 @@ def run_experiment(
     
     lab = 0
     
-    relat = open(f'EXP-{len(target_dex)}.{target_dex[0]}_{len(score_type)}.{score_type[0]}_{len(crossover_type)}.{crossover_type[0]}.txt', 'w')    
+    relat = open(f'EXP-{len(target_dex)}.{target_dex[0]}_{len(score_type)}.{score_type[0]}_{len(crossover_type)}.{crossover_type[0]}.txt', 'a')    
     for a in target_dex:
         relat.write(f'\n ------- | #{a} | -------\n')
         for b in generations:
@@ -650,5 +665,5 @@ def run_experiment(
 
 if __name__ == '__main__':
 
-    #['RGBA', 'Grayscale', 'Binary']
+    #['RGBA', 'Grayscale', 'BW']
     main()

@@ -14,7 +14,7 @@ class Fitness():
         self.cur_gen = 0
         
         self.last_used = 'none'
-        self.adaptible_smart_stats = {
+        self.adaptable_smart_stats = {
             "cos_progressive": {
                 "success_num": 1,
                 "total_num": 1,
@@ -45,7 +45,7 @@ class Fitness():
             },
             }
         
-        '''self.adaptible_advanced_stats = {
+        '''self.adaptable_advanced_stats = {
             "cos_progressive": {
                 # pop_size
                 100: {
@@ -149,7 +149,7 @@ class Fitness():
         indSort = [t[0] for t in sort_val]
         return list(zip(indSort, sinnorm))
     
-    def adaptible_sine(self, team):
+    def adaptable_sine(self, team):
         
         if self.cur_gen < 100:
             return self.normalization(team, 1, self.pop_size)
@@ -185,23 +185,23 @@ class Fitness():
                         return self.sinh2_norm(team)
                   
                   
-    def adaptible_learner(self, team):
+    def adaptable_learner(self, team):
         
         if self.last_used != 'none':
-            self.adaptible_smart_stats[self.last_used]["total_num"] += 1
+            self.adaptable_smart_stats[self.last_used]["total_num"] += 1
             if self.no_progress == 0:
-                self.adaptible_smart_stats[self.last_used]["success_num"] += 1
+                self.adaptable_smart_stats[self.last_used]["success_num"] += 1
                 
                 
         if self.cur_gen >= 100:        
             pool = [
-                ('cos_progressive', utils.safe_weight(self.adaptible_smart_stats['cos_progressive']['total_num'], self.adaptible_smart_stats['cos_progressive']['success_num'] )),
-                ('cos_sin_log_progressive', utils.safe_weight(self.adaptible_smart_stats['cos_sin_log_progressive']['total_num'], self.adaptible_smart_stats['cos_sin_log_progressive']['success_num'] )),
-                ('cos_double', utils.safe_weight(self.adaptible_smart_stats['cos_double']['total_num'], self.adaptible_smart_stats['cos_double']['success_num'] )),
-                ('sin_half', utils.safe_weight(self.adaptible_smart_stats['sin_half']['total_num'], self.adaptible_smart_stats['sin_half']['success_num'] )),
-                ('normalize', utils.safe_weight(self.adaptible_smart_stats['normalize']['total_num'], self.adaptible_smart_stats['normalize']['success_num'] )),
-                ('windowing', utils.safe_weight(self.adaptible_smart_stats['windowing']['total_num'], self.adaptible_smart_stats['windowing']['success_num'] )),
-                ('score', utils.safe_weight(self.adaptible_smart_stats['score']['total_num'], self.adaptible_smart_stats['score']['success_num'] )),
+                ('cos_progressive', utils.safe_weight(self.adaptable_smart_stats['cos_progressive']['total_num'], self.adaptable_smart_stats['cos_progressive']['success_num'] )),
+                ('cos_sin_log_progressive', utils.safe_weight(self.adaptable_smart_stats['cos_sin_log_progressive']['total_num'], self.adaptable_smart_stats['cos_sin_log_progressive']['success_num'] )),
+                ('cos_double', utils.safe_weight(self.adaptable_smart_stats['cos_double']['total_num'], self.adaptable_smart_stats['cos_double']['success_num'] )),
+                ('sin_half', utils.safe_weight(self.adaptable_smart_stats['sin_half']['total_num'], self.adaptable_smart_stats['sin_half']['success_num'] )),
+                ('normalize', utils.safe_weight(self.adaptable_smart_stats['normalize']['total_num'], self.adaptable_smart_stats['normalize']['success_num'] )),
+                ('windowing', utils.safe_weight(self.adaptable_smart_stats['windowing']['total_num'], self.adaptable_smart_stats['windowing']['success_num'] )),
+                ('score', utils.safe_weight(self.adaptable_smart_stats['score']['total_num'], self.adaptable_smart_stats['score']['success_num'] )),
                     ]
             
             apt = [w[1] for w in pool]
@@ -211,7 +211,7 @@ class Fitness():
             self.last_used = fit_choice[0][0]
             
             if self.cur_gen % 100 == 0:
-                print(f'Dict:\n{self.adaptible_smart_stats}\n\nCur pool:\n{pool}\n')
+                print(f'Dict:\n{self.adaptable_smart_stats}\n\nCur pool:\n{pool}\n')
                 relat = open(f'adapt_rates.txt', 'a') 
                 relat.write(f'--- POOL ---\n')   
                 relat.write(str(pool))
@@ -281,10 +281,10 @@ class Fitness():
             pks = self.cos_progressive(team, 4)
         elif self.fitness_type == 'cos_sin_log_progressive':
             pks = self.cos_sin_log_progressive(team)
-        elif self.fitness_type == 'adaptible':
-            pks = self.adaptible_sine(team)
-        elif self.fitness_type == 'adaptible_learner':
-            pks = self.adaptible_learner(team)
+        elif self.fitness_type == 'adaptable':
+            pks = self.adaptable_sine(team)
+        elif self.fitness_type == 'adaptable_learner':
+            pks = self.adaptable_learner(team)
         else:
             print('fitness error')
             pks = team

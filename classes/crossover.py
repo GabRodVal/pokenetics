@@ -16,15 +16,15 @@ class Crossover():
 
     class CrossoverType(Enum):
         #   Métodos de Crossover
-        ##  Mesh - Métodos que mesclam pixels
+        ##  Mix - Métodos que mesclam pixels
         ### Mescla pixels com alfa > 0, se não, troca pelo pixel visivel
-        OVERLAY = ['mesh_essential']
+        OVERLAY = ['mix_essential']
         ### Mescla as cores
-        MIX_COLOR = ['mesh_color']
+        MIX_COLOR = ['mix_color']
         ### Mescla pixels de acordo com o pokemon alvo
-        OVERLAY_CHEATING = ['mesh_sensible']
-        ### Pra cada crossover, seleciona um metodo Mesh aleatorio.
-        OVERLAY_ALL = ['mesh_essential', 'mesh_color', 'mesh_sensible']
+        OVERLAY_CHEATING = ['mix_sensible']
+        ### Pra cada crossover, seleciona um metodo Mix aleatorio.
+        OVERLAY_ALL = ['mix_essential', 'mix_color', 'mix_sensible']
         ##  Swap - Métodos que trocam pixels
 
         ### Parte ambos os pokemon ao meio e junta as partes diferentes
@@ -36,29 +36,29 @@ class Crossover():
         ### Troca um pixel sim, um pixel não
         SWAP_EVEN = ['swap_even']
         ### Troca pixels de acordo com o pokemon alvoAdd commentMore actions
-        SWAP_CHEATING = ['swap_sensible']
+        SWAP_CHEATING = ['swap_cheater_rgba']
         ### Troca varios pixels em sequencia
         SWAP_SERIAL = ['swap_serial']
         ### Troca as cores dos pokemon
         SWAP_COLOR = ['swap_colors']
         ### Pra cada crossover, seleciona um metodo Swap aleatorio.
-        SWAP_ALL = ['bisect', 'swap_simple', 'swap_even', 'swap_sensible', 'swap_serial', 'swap_colors']
-        ### Pra cada crossover, seleciona um metodo swap aleatorio, exceto swap_sensible
+        SWAP_ALL = ['bisect', 'swap_simple', 'swap_even', 'swap_cheater_rgba', 'swap_serial', 'swap_colors']
+        ### Pra cada crossover, seleciona um metodo swap aleatorio, exceto swap_cheater_rgba
         SWAP_DUMB = ['bisect', 'swap_simple', 'swap_even', 'swap_serial', 'swap_colors']
 
         ## Extras
-        ### Pra cada crossover, seleciona um metodo aleatorio, com exceção de swap_sensible e mesh_smart
-        CHAOTIC = ['bisect', 'swap_simple', 'swap_even', 'swap_serial', 'swap_colors', 'mesh_essential']
-        ### Seleciona entre swap_sensible e mesh_smart
-        SMART = ['swap_sensible', 'mesh_sensible']
+        ### Pra cada crossover, seleciona um metodo aleatorio, com exceção de swap_cheater_rgba e mix_smart
+        CHAOTIC = ['bisect', 'swap_simple', 'swap_even', 'swap_serial', 'swap_colors', 'mix_essential']
+        ### Seleciona entre swap_cheater_rgba e mix_smart
+        SMART = ['swap_cheater_rgba', 'mix_sensible']
         ### Pra cada crossover, seleciona um metodo aleatorio.
-        ALL_IN = ['bisect', 'swap_simple', 'swap_even', 'swap_sensible', 'swap_serial', 'swap_colors', 'mesh_essential']
+        ALL_IN = ['bisect', 'swap_simple', 'swap_even', 'swap_cheater_rgba', 'swap_serial', 'swap_colors', 'mix_essential']
         ### Usa os métodos relacionados a cores.
         COLORFUL = ['swap_colors']
 
     
     #botar a porra toda pra parir gemeos
-    def crossover_mesh_opacity_essential(self, img_a, img_b):
+    def crossover_mix_opacity_essential(self, img_a, img_b):
         child_a = np.copy(img_a)
         child_b = np.copy(img_b)
 
@@ -78,6 +78,12 @@ class Crossover():
                     else:
                         child_a[j][k] = np.ceil(np.add(np.multiply(img_a[j][k], op_con), np.multiply(img_b[j][k], 1-op_con)))
                         child_b[j][k] = np.ceil(np.add(np.multiply(img_b[j][k], op_con), np.multiply(img_a[j][k], 1-op_con)))
+                        
+        mkal = child_a[:,:,3] > 0
+        child_a[mkal,3] = 255
+        
+        mkbl = child_b[:,:,3] > 0
+        child_b[mkbl,3] = 255
 
         return child_a, child_b
 
@@ -111,7 +117,7 @@ class Crossover():
         return child_a, child_b
     
     #CHEAT
-    def crossover_swap_sensible(self, img_a, img_b):
+    def crossover_swap_cheater_rgba(self, img_a, img_b):
         child_a = np.copy(img_a)
         child_b = np.copy(img_b)
 
@@ -170,16 +176,58 @@ class Crossover():
                 v_half = img_a.shape[0] // 2
                 p_a, p_b = self.crossover_multisect(img_a[:v_half].copy(), img_b[v_half:].copy())
                 child_a = np.vstack((p_a, p_b))
+                #child_a = np.vstack((p_b, p_a))
                 p_a, p_b = self.crossover_multisect(img_b[:v_half].copy(), img_a[v_half:].copy())
                 child_b = np.vstack((p_a, p_b))
+                #child_b = np.vstack((p_b, p_a))
             else:
                 h_half = img_a.shape[1] // 2
                 p_a, p_b = self.crossover_multisect(img_a[:,:h_half].copy(), img_b[:,h_half:].copy())
-                child_a = np.hstack((p_a, p_b))
+                #child_a = np.hstack((p_a, p_b))
+                child_a = np.hstack((p_b, p_a))
                 p_a, p_b = self.crossover_multisect(img_b[:,:h_half].copy(), img_a[:,h_half:].copy())
-                child_b = np.hstack((p_a, p_b))
+                #child_b = np.hstack((p_a, p_b))
+                child_b = np.hstack((p_b, p_a))
+
 
         return child_a, child_b
+
+    def crossover_swap_chunks(self, img_a, img_b):
+        
+        if img_a.shape[0] % 2 == 0:
+                v_half = img_a.shape[0] // 2
+                h_half = img_a.shape[1] // 2
+                
+                bot_left_a = img_a[v_half:, :h_half]
+                bot_right_a = img_a[v_half:, h_half:]
+                up_left_a = img_a[:v_half, :h_half]
+                up_right_a = img_a[:v_half, h_half:]
+                
+                bot_left_b = img_b[v_half:, :h_half]
+                bot_right_b = img_b[v_half:, h_half:]
+                up_left_b = img_b[:v_half, :h_half]
+                up_right_b = img_b[:v_half, h_half:]
+                
+                if randint(0,1):
+                    up_left_a, up_left_b = self.crossover_swap_chunks(up_left_a, up_left_b)
+                    up_right_a, up_right_b = self.crossover_swap_chunks(up_right_a, up_right_b)
+                    bot_left_a, bot_left_b = self.crossover_swap_chunks(bot_left_a, bot_left_b)
+                    bot_right_a, bot_right_b = self.crossover_swap_chunks(bot_right_a, bot_right_b)
+
+                
+                left_a = np.vstack((up_left_a, bot_left_b))
+                left_b = np.vstack((up_left_b, bot_left_a))
+                right_a = np.vstack((up_right_b, bot_right_a))
+                right_b = np.vstack((up_right_a, bot_right_b))
+                
+                child_a = np.hstack((left_a, right_a))
+                child_b = np.hstack((left_b, right_b))
+                
+                return child_a, child_b
+        else:
+            return img_a, img_b
+
+
 
     def crossover_swap_even(self, img_a, img_b):
         child_a = np.copy(img_a)
@@ -303,7 +351,7 @@ class Crossover():
     
     # crossover_subtract
 
-    #def mesh crossover_mesh_colors(self, img_a, img_b):
+    #def mix crossover_mix_colors(self, img_a, img_b):
     #   pass
 
 
@@ -388,7 +436,7 @@ class Crossover():
 
         return child_a, child_b
     
-    def crossover_mesh_opacity_minimize(self, img_a, img_b):
+    def crossover_mix_opacity_minimize(self, img_a, img_b):
         child_a = np.copy(img_a)
         child_b = np.copy(img_b)
 
@@ -408,6 +456,12 @@ class Crossover():
                     else:
                         child_a[j][k] = np.ceil(np.add(np.multiply(img_a[j][k], op_con), np.multiply(img_b[j][k], 1-op_con)))
                         child_b[j][k] = np.ceil(np.add(np.multiply(img_b[j][k], op_con), np.multiply(img_a[j][k], 1-op_con)))
+        
+        mkal = child_a[:,:,3] > 0
+        child_a[mkal,3] = 255
+        
+        mkbl = child_b[:,:,3] > 0
+        child_b[mkbl,3] = 255
 
         return child_a, child_b
     
@@ -455,7 +509,7 @@ class Crossover():
         
         return np.array(child_a).astype(np.uint8), np.array(child_b).astype(np.uint8)
     
-    def crossover_mesh_subtract(self, img_a, img_b):
+    def crossover_mix_subtract(self, img_a, img_b):
         child_a = np.zeros_like(img_a)
         child_b = np.zeros_like(img_b)
 
@@ -471,27 +525,30 @@ class Crossover():
 
 
     def crossover_couple(self, img_a, img_b):
+        # if 95%< similarity, roll mutation twice, 99%?, 10 times.
+        # also change linear reg.
 
         cross_choice = choices(self.crossover_type, k=1)
         #cross_choice = self.crossover_type[randint(0,len(self.crossover_type))]
         match cross_choice[0]:
-            case 'mesh_essential':
-                c_a, c_b = self.crossover_mesh_opacity_essential(img_a, img_b)
-            #case 'mesh_full':
-            #    c_a, c_b = self.crossover_mesh_opacity_full(img_a, img_b)
+            case 'mix_essential':
+                c_a, c_b = self.crossover_mix_opacity_essential(img_a, img_b)
+            #case 'mix_full':
+            #    c_a, c_b = self.crossover_mix_opacity_full(img_a, img_b)
             case 'swap_simple':
                 c_a, c_b = self.crossover_swap_pixels(img_a, img_b)
             case 'swap_serial':
                 c_a, c_b = self.crossover_swap_serial_pixels(img_a, img_b)
-            case 'swap_sensible':
-                c_a, c_b = self.crossover_swap_sensible(img_a, img_b)
+            case 'swap_cheater_rgba':
+                c_a, c_b = self.crossover_swap_cheater_rgba(img_a, img_b)
             case 'bisect':
                 c_a, c_b  = self.crossover_bisect(img_a, img_b)
             case 'multisect':
                 c_a, c_b  = self.crossover_multisect(img_a, img_b)
                 if c_a.shape[0] != img_a.shape[0]: print(f'!!!{img_a.shape[0]}!!!')
                 if c_a.shape[1] != img_a.shape[0]: print(f'!!!{c_a.shape[1]}!!!')
-
+            case 'swap_chunks':
+                c_a, c_b  = self.crossover_swap_chunks(img_a, img_b)
             case 'swap_even':
                 c_a, c_b = self.crossover_swap_even(img_a, img_b)
             case 'swap_colors':
@@ -504,14 +561,14 @@ class Crossover():
                 c_a, c_b = self.crossover_dark_n_light(img_a, img_b)
             case 'contrast':
                 c_a, c_b = self.crossover_contrast(img_a, img_b)
-            case 'mesh_mini':
-                c_a, c_b = self.crossover_mesh_opacity_minimize(img_a, img_b)
+            case 'mix_mini':
+                c_a, c_b = self.crossover_mix_opacity_minimize(img_a, img_b)
             case 'checker_stack':
                 c_a, c_b = self.crossover_checker_stack(img_a, img_b)
             case 'swap_squared':
                 c_a, c_b = self.crossover_swap_squared(img_a, img_b)
-            case 'mesh_subtract':
-                c_a, c_b = self.crossover_mesh_subtract(img_a, img_b)
+            case 'mix_subtract':
+                c_a, c_b = self.crossover_mix_subtract(img_a, img_b)
             case 'no_cross':
                 c_a = img_a.copy()
                 c_b = img_b.copy()
