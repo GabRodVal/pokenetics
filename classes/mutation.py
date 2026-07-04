@@ -14,7 +14,7 @@ class Mutation():
 
     def mutate(self, pk_img):
         
-        mutation_type = randint(0, 20)
+        mutation_type = randint(0, 30)
         #print(f'Tipo de mutação:{mutation_type}')
         match mutation_type:
             case 0:
@@ -74,10 +74,6 @@ class Mutation():
                 sml = utils.resize_by_factor(np.copy(pk_img), 0.5)
                 col = np.hstack((sml, sml))
                 pk_img = np.vstack((col, col))
-                    #Get shape
-                    #erode shape
-                    #dilat shape
-                    #open/close
                     #laplacian
             case 16:
                 pk_img = cv2.blur(pk_img,(3,3))
@@ -85,6 +81,46 @@ class Mutation():
                 pk_img = cv2.GaussianBlur(pk_img, (3,3),0)
             case 18:
                 pk_img = cv2.medianBlur(pk_img, 3)
+            case 19:
+                st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+                pk_img = cv2.erode(pk_img, st_e, iterations=randint(1,3))
+            case 20:
+                st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+                pk_img = cv2.dilate(pk_img, st_e, iterations=randint(1,3))
+            case 21:
+                st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+                pk_img = cv2.morphologyEx(pk_img, cv2.MORPH_CLOSE, st_e, iterations=randint(1,2))
+            case 22:
+                st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+                pk_img = cv2.morphologyEx(pk_img, cv2.MORPH_OPEN, st_e, iterations=randint(1,2))
+            case 23:
+                st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+                pk_img = cv2.morphologyEx(pk_img, cv2.MORPH_GRADIENT, st_e)
+            case 24:
+                st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+                pk_img = cv2.morphologyEx(pk_img, cv2.MORPH_TOPHAT, st_e)
+            case 25:
+                st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+                pk_img = cv2.morphologyEx(pk_img, cv2.MORPH_BLACKHAT, st_e)
+            case 26:
+                sharp_mask = np.array([
+                    [0 , -1, 0],
+                    [-1,  5, -1],
+                    [0, -1, 0],
+                ])
+                pk_img = cv2.filter2D(pk_img, -1, sharp_mask)   
+            case 27:
+                sharp_mask = np.array([
+                    [-1, -1, -1],
+                    [-1,  9, -1],
+                    [-1, -1, -1],
+                ])
+                pk_img = cv2.filter2D(pk_img, -1, sharp_mask)
+            case 28:
+                gauss = cv2.GaussianBlur(np.copy(pk_img), (3,3),0)
+                pk_img = cv2.addWeighted(pk_img, 2.0, gauss, -1.0, 0)
+            case 29:
+                pk_img = self.visible_mono(pk_img)
             case _:
                 upper_range = math.floor(pk_img.shape[0] * 0.75)
                 lower_range = math.floor(pk_img.shape[0] * 0.25)
@@ -125,7 +161,7 @@ class Mutation():
             for j in range(len(pk_img[0])):
                 chs = choices(color_weight,wgt,k=1)
                 ab_img[i][j] = utils.hex_to_color(chs[0])
-                
+                                
         return np.array(ab_img, dtype=np.uint8)
             
             
@@ -135,12 +171,15 @@ class Mutation():
         pk_size = len(img) * len(img[0])
         ab_img = np.zeros_like(img)
         ref_img = [[''] * ab_img.shape[0]]*ab_img.shape[1]
-        pk_color_dict = utils.get_color_dict(pk_img, False)
+        pk_color_dict = utils.get_color_dict(pk_img, False, skip_alpha=True)
         clrs = pk_color_dict.keys()
         
         color_weight = []
         for cl in clrs:
-            color_weight.append((cl, int((pk_color_dict[cl]/pk_size)*10000)))
+            if cl == '00000000':
+                continue
+            color_weight.append((cl, int((pk_color_dict[cl]))))
+        print(color_weight)
         wgt = [w[1] for w in color_weight]
         
         markov_stats={
@@ -157,6 +196,8 @@ class Mutation():
             for j in range(1,len(img[0]-1)):
                 tot+=3
                 cur_clr = utils.color_to_hex(img[last_iter[0]][last_iter[1]])
+                if img[i][j][3] != 255:
+                    continue
                 if not(f'{cur_clr}' in markov_stats):
                         markov_stats[f'{cur_clr}'] = {
                     'total': 0,
@@ -172,11 +213,7 @@ class Mutation():
                 if not(n_clr in markov_stats[f'{cur_clr}']['next_chance']):
                     markov_stats[f'{cur_clr}']['next_chance'][n_clr] = 0
                 
-                
                 markov_stats[f'{cur_clr}']['next_chance'][n_clr] +=1
-                #markov_stats[cur_clr]['next_chance'][utils.color_to_hex(img[i+1][j][0:2])] +=1
-                #markov_stats[cur_clr]['next_chance'][utils.color_to_hex(img[i+1][j+1][0:2])] +=1
-                #markov_stats[cur_clr]['total'] +=3
                 last_iter = [i,j]
         
         last_iter = [0,0]
@@ -196,11 +233,15 @@ class Mutation():
                     
                     last_iter = [i,j]
 
-                    
-                    
         return np.array(ab_img, dtype=np.uint8)
         
-    
+    def visible_mono(self, pk_img):
+        v_img = np.zeros_like(pk_img)
+        
+        vmk = pk_img[:,:,3] == 255
+        v_img[vmk] = [255,255,255,255]
+        
+        return v_img
     
     def calamity(self, team):
         if self.calamity_enabled:

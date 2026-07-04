@@ -11,25 +11,38 @@ def to_grayscale(image):
     #mask = img[:,:,3] == 0
     #img[mask] = [255,255,255,255]
     #img[mask] = [0,255,0,255]
+    
     img = np.copy(image)
-    temp_img = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
-    for i in range(img.shape[0]):
+    mk = img[:,:,3] == 0
+    
+    temp_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    #ret, mut_img5 = cv2.threshold(cv2.cvtColor(img_arch, cv2.COLOR_RGB2GRAY), 127, 255, cv2.THRESH_BINARY)
+    
+    '''for i in range(img.shape[0]):
         for j in range(img.shape[1]):
             #t_rd = img[i][j]//3
             if img[i][j][3] < 255:
                 continue
-            temp_img[i][j] = (np.mean(img[i][j]))
+            temp_img[i][j] = (np.mean(img[i][j]))'''
+            
+    ########################################################temp_img[:,:] = np.mean(img[:,:])
     
     #temp_img[mask] = 255
     #cv2.imwrite('teste_cinzento222.jpg', new_img)
+    temp_img[mk] = 255
     return temp_img
 
-def to_black_n_white(img):
-    mk = img[:,:,3] == 0
-    t_im = np.copy(img)
-    t_im[mk] = [128,128,128,255]
+def to_black_n_white(image):
     
-    ref = to_grayscale(t_im)
+    #temp_img = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
+    img = np.copy(image)
+    _, temp_img = cv2.threshold(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), 127, 255, cv2.THRESH_BINARY)
+    
+    mk = img[:,:,3] == 0
+    #t_im = np.copy(img)
+    #t_im[mk] = [128,128,128,255]
+    
+    '''ref = to_grayscale(t_im)
     
     
     mk2 = ref[:,:] >= 128
@@ -42,8 +55,9 @@ def to_black_n_white(img):
     temp_img = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
     temp_img[mk2] = 255
     temp_img[mk3] = 0
-    temp_img[mk] = 127
+    temp_img[mk] = 127'''
     
+    temp_img[mk] = 127
     return temp_img
 
 def to_rgba(img):
@@ -100,6 +114,25 @@ def posterize_hard(image):
                 
 
     return np.array(n_img, dtype=np.uint8)
+
+def posterize_binary(image):
+    #[ 0, 68, 136, 204, 255] #5
+    ##00, 44, 88,  CC,  FF
+    #[ 0, 51, 102, 153, 204, 255] #6
+    ##00, 33, 66,  99,  CC,  FF
+    #[ 0, 85, 170, 255]
+    
+    _, n_img = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
+    
+    
+    #for i in range(img.shape[0]):
+    #    for j in range(img.shape[1]):
+    #        for l in range(3):
+    #            img[i][j][l] = (51 * round(img[i][j][l]/51))
+                
+
+    return np.array(n_img, dtype=np.uint8)
+
 
 def to_monochrome(img, rr:bool, gg:bool, bb:bool):
     
@@ -406,17 +439,19 @@ def hex_to_color(hex_arr):
         return '00000000'
     
 
-def get_color_list(img):
+def get_color_list(img, skip_alpha=False):
     all_colors = set()
     for i in range(len(img)):
             for j in range(len(img[0])):
+                if img[i][j][3] != 255 and skip_alpha:
+                    continue
                 all_colors.add(color_to_hex(img[i][j][0:4]))
     
     color_list = list(all_colors)
     
     return color_list
     
-def get_color_dict(img, posterize:bool):
+def get_color_dict(img, posterize:bool, skip_alpha=False):
 
         if posterize:
             n_img = posterize(np.copy(img))
@@ -429,8 +464,10 @@ def get_color_dict(img, posterize:bool):
         
         for i in range(len(img)):
             for j in range(len(img[0])):
+                if img[i][j][3] != 255 and skip_alpha:
+                    continue
                 rr,gg,bb,alpha = n_img[i][j]
-                if alpha == 0:
+                if alpha != 255:
                     hex_color = '00000000'
                 else:
                     hex_color = f'{color_to_hex([rr,gg,bb])}ff'

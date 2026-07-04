@@ -94,10 +94,14 @@ class Pokedex():
             if debug:  print(f'uouies: {dex} - {img_arch.shape}')
             img_arch = cv2.resize(img_arch, (self.dim[0], self.dim[0]))
         
+        ######
         if self.posterize_all:
-            return utils.posterize(img_arch)
-        else:
-            return img_arch
+            img_arch = utils.posterize(img_arch)
+        mini_sprites = False
+        if mini_sprites:
+            img_arch = utils.resize_by_factor(img_arch, 0.5)    
+        
+        return img_arch
     
     def get_pokedex_keys(self):
         return self.pokedex_keys
@@ -152,6 +156,8 @@ class Pokedex():
             score = self.aval_target_semi_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'Posterize'.lower():
             score = self.aval_target_posterized(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'Binposter'.lower():
+            score = self.aval_target_binposter(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'Semiperfect_posterize'.lower():
             score = self.aval_target_semi_perfect_posterized(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'semiperfect_posterize_weighted'.lower():
@@ -223,24 +229,6 @@ class Pokedex():
             for k in range(0, len(ref_bw)):
                 score += (1 * (ref_bw[j][k] == acc_bw[j][k]))
 
-        '''for j in range(0, len(ref_mon)):
-            for k in range(0, len(ref_mon)):
-                if ref_mon[j][k][3] != acc_mon[j][k][3]:
-                    continue
-                elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
-                    score += 1
-                else:
-                    ref_mean = int((np.int32(ref_mon[j][k][0]) + np.int32(ref_mon[j][k][1]) + np.int32(ref_mon[j][k][2]))/3)
-                    acc_mean = int((np.int32(acc_mon[j][k][0]) + np.int32(acc_mon[j][k][1]) + np.int32(acc_mon[j][k][2]))/3)
-
-                    ref_bin = (ref_mean >= 128) * 1
-                    acc_bin = (acc_mean >= 128) * 1
-                    
-                    #print(np.int32(255 - abs(ref_mean - acc_mean)))
-                    score += (1 - abs(ref_bin - acc_bin))
-                
-                    #print(f'{len(ref_mon)}-{len(ref_mon)}-{len(ref_mon)}')
-                    #print(f'{len(acc_mon)}-{len(acc_mon)}-{len(acc_mon)}')'''
         return score
     
     def aval_target_perfect(self, ref_mon, acc_mon):
@@ -275,6 +263,14 @@ class Pokedex():
     def aval_target_posterized(self, ref_mon, acc_mon):
         ref_post = utils.posterize(np.copy(ref_mon))
         acc_post = utils.posterize(np.copy(acc_mon))
+
+        score = self.aval_target_standard(ref_post, acc_post)
+            
+        return score
+    
+    def aval_target_binposter(self, ref_mon, acc_mon):
+        ref_post = utils.posterize_binary(np.copy(ref_mon))
+        acc_post = utils.posterize_binary(np.copy(acc_mon))
 
         score = self.aval_target_standard(ref_post, acc_post)
             

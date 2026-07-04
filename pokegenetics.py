@@ -74,8 +74,8 @@ class PokeGenetics():
             target_dex,
             generation='9',
             pop_size=40,
-            mutation_rate=0.05,
-            crossover_rate=0.6,
+            mutation_rate=0.08,
+            crossover_rate=0.64,
             max_gen=100,
             score_type='RGBA',
             auto_reg=False,
@@ -94,7 +94,7 @@ class PokeGenetics():
                 ],
             fitness_type='normalize',
             regulate_type='none',
-            elitism_rate=0.05,
+            elitism_rate=0.12,
             easy_shiny=False,
             posterize=False,
             verbose=True,
@@ -248,7 +248,7 @@ class PokeGenetics():
 
 
         
-        if len(self.top_league) < 1 or abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3])/10_000:
+        if len(self.top_league) < 1 or abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3]/400):
             factor = math.ceil(256/most_fit_mon[0].shape[0])
 
             self.top_league.append(most_fit_mon)
@@ -277,8 +277,8 @@ class PokeGenetics():
                 most_fit_difference = utils.get_difference_sprite(utils.posterize(np.copy(target_mon[2])), most_fit_post)
                 imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postdiff.png', utils.resize_by_factor(most_fit_difference, factor))
         
-        if len(self.top_league) > 1000:
-                self.top_league = self.top_league[:500] + self.top_league[-500:]
+        if len(self.top_league) > 1800:
+                self.top_league = self.top_league[:900] + self.top_league[-900:]
 
     def hall_of_fame(self):
         top_gif = []
@@ -337,11 +337,11 @@ class PokeGenetics():
 
         scr_h1_fig.set_title("H1")
         scr_h1_fig.grid()
-        scr_h1_fig.plot(self.score_values[:min(math.floor(len(self.score_values)/2), 360)], '#20124d', label='score_h1', linewidth=1)
+        scr_h1_fig.plot(self.score_values[:min(math.floor(len(self.score_values)/2), 500)], '#20124d', label='score_h1', linewidth=1)
 
         scr_h2_fig.set_title("H2")
         scr_h2_fig.grid()
-        scr_h2_fig.plot(self.score_values[-max(math.floor(len(self.score_values)/2), (len(self.score_values)-360)):], '#20124d', label='score_h2', linewidth=1)
+        scr_h2_fig.plot(self.score_values[-max(math.floor(len(self.score_values)/2), (len(self.score_values)-500)):], '#20124d', label='score_h2', linewidth=1)
 
         pop_fig.set_title(f"Population Size - Avg {mean(self.pop_values):.1f}")
         pop_fig.grid()
@@ -379,21 +379,55 @@ class PokeGenetics():
     #Only stats return, no string
     def get_run_stats(self):
         target = self.party.get_target_pokemon()
-        return {
-            'target':f'[{target[0]}] - {target[1]}',
-            'score': f'{self.score_type} - {self.first_score}->{self.cur_score} | {self.h_scores.pop():.4f}%',
+        
+        stat_dict = {
+            'target_dex': target[0],
+            'target_name': target[1],
+            'target_score': target[3],
+            #'target':f'[{target[0]}] - {target[1]}',
+            
+            'score_type':self.score_type,
+            'first_score': self.first_score,
+            'cur_score': self.cur_score,
+            'cur_score_pct': self.h_scores.pop(),
+            #'score': f'{self.score_type} - {self.first_score}->{self.cur_score} | {self.h_scores.pop():.4f}%',
+            'true_score': self.true_scores.pop(),
+            #
             'generation': self.generation,
-            'time':f'{(self.cur_stamp - self.first_stamp)} | avg {((self.cur_stamp - self.first_stamp)/self.cur_gen):.4f}',
-            'gens': f'{self.cur_gen}/{self.max_gen}',
-            'population':f'{self.pop_size} | avg {mean(self.pop_values):.4f} | tot {mean(self.pop_values) * self.cur_gen}',
-            'crossover': f'{self.crossover_rate}|avg {mean(self.cross_values):.4f}\n        {self.crossover_type}',
-            'mutation': f'{self.mutation_rate} | avg {mean(self.mut_values):.4f}',
-            'elitism': f'on: {self.elitism} | mut:{self.elitism_mutation} - {self.elitism_rate}',
-            'fitness': f'{self.fitness_type} | avg {mean(self.fitness_values)}',
-            'stat_reg': f'on:{self.auto_regulate} | pop:{self.reg_pop} | {self.regulate_type}',
-            'easy_shiny': f'on:{self.easy_shiny}',
-            'img_gen': f'on:{self.save_all_imgs}'
+            'total_time': (self.cur_stamp - self.first_stamp),
+            'avg_time_p_gen': ((self.cur_stamp - self.first_stamp)/self.cur_gen),
+            #'time':f'{(self.cur_stamp - self.first_stamp)} | avg {((self.cur_stamp - self.first_stamp)/self.cur_gen):.4f}',
+            'turns_run': self.cur_gen,
+            'max_turns': self.max_gen,
+            #'gens': f'{self.cur_gen}/{self.max_gen}',
+            'original_population':self.pop_size,
+            'average_population': mean(self.pop_values),
+            #'population':f'{self.pop_size} | avg {mean(self.pop_values):.4f} | tot {mean(self.pop_values) * self.cur_gen}',
+            'original_crossover_rate':self.crossover_rate,
+            'average_crossover_rate':mean(self.cross_values),
+            'crossover_type_s':self.crossover_type,
+            #'crossover': f'{self.crossover_rate}|avg {mean(self.cross_values):.4f}\n        {self.crossover_type}',
+            'original_mutation_rate':self.mutation_rate,
+            'average_mutation_rate': mean(self.mut_values),
+            #'mutation': f'{self.mutation_rate} | avg {mean(self.mut_values):.4f}',
+            'elitism': self.elitism,
+            'elitism_mutation': self.elitism_mutation,
+            'original_elitism_rate': self.elitism_rate,
+            'average_elitism_rate': mean(self.elt_values),
+            'pity': self.pity,
+            #'elitism': f'on: {self.elitism} | mut:{self.elitism_mutation} - {self.elitism_rate}',
+            'fitness_type':self.fitness_type,
+            #'fitness': f'{self.fitness_type} | avg {mean(self.fitness_values)}',
+            'auto_regulate':self.auto_regulate,
+            'auto_regulate_population': self.reg_pop,
+            'auto_regulate_type':self.regulate_type,
+            #'stat_reg': f'on:{self.auto_regulate} | pop:{self.reg_pop} | {self.regulate_type}',
+            'easy_shiny': self.easy_shiny,
+            'img_gen': self.save_all_imgs,
+            'turns_without_progress': self.no_change_total,
+            'max_consecutive_turns_without_progress':self.no_change_max
             }
+        return stat_dict
         
     def create_dir(self, cur_dir):
         try:
@@ -420,7 +454,7 @@ class PokeGenetics():
         self.old_stamp = self.first_stamp
         target_mon = self.party.get_target_pokemon()
 
-        self.base_dir = f'runs/{(f'SE{self.serial_label:02d}-')*self.serial_experiment}{str(self.first_stamp)[1:8]}-{target_mon[1]}-{self.score_type}-{f'G{self.generation}'}-{self.crossover_type[0]}-{'pp-' * (len(self.crossover_type)>=2)}p{self.pop_size}g{self.max_gen}'
+        self.base_dir = f'runs/{(f'SE{self.serial_label:02d}-')*self.serial_experiment}{str(self.first_stamp)[2:9]}-{target_mon[1]}-{self.score_type}-{f'G{self.generation}'}-{self.crossover_type[0]}-{'pp-' * (len(self.crossover_type)>=2)}p{self.pop_size}g{self.max_gen}'
         self.party.set_base_dir(self.base_dir)
 
         self.create_dir(cur_dir=self.base_dir)

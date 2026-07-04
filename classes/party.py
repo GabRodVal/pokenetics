@@ -179,17 +179,14 @@ class Party():
 
         if randint(0, 100_000) < (self.mutation_rate * 100_000):
             c_a = self.mutation.mutate(c_a)
-        if randint(0, 100_000) < (self.mutation_rate * 100_00):
+        if randint(0, 100_000) < (self.mutation_rate * 100_000):
             c_b = self.mutation.mutate(c_b)
         #print('Crossovers_MUTANT: OK')
 
         return c_a, c_b
 
-
-    def initial_population(self):
-        poke_keys = self.pokedex.get_pokedex_keys()
-        
-        factor = 8
+    def create_target_ref_img(self):
+        factor = math.floor(512/self.target_mon[2].shape[0])
         
         imio.imwrite(f'{self.base_dir}/target.png', utils.resize_by_factor(self.target_mon[2], factor))
         
@@ -205,6 +202,11 @@ class Party():
         imio.imwrite(f'{self.base_dir}/target_post.png', utils.resize_by_factor(posterized_target, factor))
         hard_posterized_target = utils.posterize_hard(np.copy(self.target_mon[2]))
         imio.imwrite(f'{self.base_dir}/target_h_post.png', utils.resize_by_factor(hard_posterized_target, factor))
+        binary_posterized_target = utils.posterize_binary(np.copy(self.target_mon[2]))
+        imio.imwrite(f'{self.base_dir}/target_bin_post.png', utils.resize_by_factor(binary_posterized_target, factor))
+    
+    def initial_population(self):
+        poke_keys = self.pokedex.get_pokedex_keys()
         
         max_pull = min(self.pop_size, math.floor(self.pokedex.get_pokedex_length() * 0.99))
         pop_dex = choices(poke_keys, k=max_pull)
@@ -243,16 +245,17 @@ class Party():
         if debug:print('Team sort: OK')
         if self.elitism:
             most_fit_mon = sorted_team.pop()
-            if self.elitism_mutation:
+            if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
                 fittest_few.append(self.mutation.mutate(np.copy(most_fit_mon[0])))
-            fittest_few.append(most_fit_mon[0])
+            else:
+                fittest_few.append(most_fit_mon[0])
             if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100}_SR0.png', most_fit_mon[0])
         if self.pity:
             least_fit_mon = sorted_team.pop(0)
             if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(least_fit_mon[1]/self.target_mon[3])*100}_FFF0.png', most_fit_mon[0])
             new_gen.append(least_fit_mon[0])
-            if self.elitism_mutation:
-                new_gen.append(self.mutation.mutate(np.copy(most_fit_mon[0])))
+            if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
+                new_gen.append(self.mutation.mutate(np.copy(least_fit_mon[0])))
         
         if debug:print('Elitism/Pity: OK')
         for iter in range(len(self.team)):
