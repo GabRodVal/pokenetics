@@ -9,7 +9,7 @@ import cv2
 debug = False
 
 class Pokedex():
-    def __init__(self, target_dex, score_type='RGBA', easy_shiny=False, generation='9'):
+    def __init__(self, target_dex, score_type='RGBA', easy_shiny=False, generation='9', posterize=False):
         
         self.generation = generation
 
@@ -52,23 +52,19 @@ class Pokedex():
         self.pokedex_keys = list(self.pokedex.keys())
         #self.pokedex_keys = self.pokedex.keys()
         self.easy_shiny = easy_shiny
-        
+        self.posterize_all = posterize
 
+        self.aval_number = 0
+        
         target_image = self.load_pokepng(target_dex)
+        self.target_image = target_image
         self.score_type = score_type
         print(score_type)
-        if self.score_type == 'RGBA'.lower():
-            self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255*3)) ]
-        elif self.score_type == 'Grayscale'.lower():
-            self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255)) ]
-        elif self.score_type == 'BW'.lower() or self.score_type == 'Perfect'.lower():
-            self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(1)) ]
-        elif self.score_type == 'Border'.lower():
-            self.target_border_matrix = utils.find_edges(target_image)
-            self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, self.aval_target(['','', target_image, 0], [target_image,0])]
-        else:
-            print(self.score_type == 'oops')
-            self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, (len(target_image[0])*len(target_image[1])*(255*3)) ]
+        
+        self.target_border_matrix = utils.find_edges(target_image)
+        self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, 0]
+        self.target_mon[3] = self.aval_target(target_image, target_image)
+        
         self.banned_mon = []
         self.banned_mon.append(self.target_mon)
         self.pokedex_keys.remove(target_dex)
@@ -97,8 +93,11 @@ class Pokedex():
         if img_arch.shape != self.dim:
             if debug:  print(f'uouies: {dex} - {img_arch.shape}')
             img_arch = cv2.resize(img_arch, (self.dim[0], self.dim[0]))
-
-        return img_arch
+        
+        if self.posterize_all:
+            return utils.posterize(img_arch)
+        else:
+            return img_arch
     
     def get_pokedex_keys(self):
         return self.pokedex_keys
@@ -121,6 +120,11 @@ class Pokedex():
     def get_target_pokemon(self):
         return self.banned_mon[0]
     
+    def get_borders(self):
+        b_a, b_b = utils.get_border_sprites(self.target_border_matrix)
+        return b_a, b_b
+    
+    
     def get_pokedex_length(self):
         return len(self.pokedex)
     
@@ -142,6 +146,24 @@ class Pokedex():
             score = self.aval_target_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'border'.lower():
             score = self.aval_target_borders(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'Mixed'.lower():
+            score = self.aval_target_mixed(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'Semiperfect'.lower():
+            score = self.aval_target_semi_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'Posterize'.lower():
+            score = self.aval_target_posterized(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'Semiperfect_posterize'.lower():
+            score = self.aval_target_semi_perfect_posterized(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'semiperfect_posterize_weighted'.lower():
+            score = self.aval_target_semi_perfect_posterized_weighted(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'semiperfect_posterize_weighted_borders'.lower():
+            score = self.aval_target_semi_perfect_posterized_weighted_borders(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'weighted_perfect_borders_only_hard_posterize':
+            score = self.aval_target_weighted_perfect_only_borders_hard_posterized(ref_mon=ref_mon, acc_mon=acc_mon)
+        if self.score_type == 'multiple'.lower():
+            score = self.aval_multiple(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'harsh_perfect'.lower():
+            score = self.aval_target_perfect_harsh(ref_mon=ref_mon, acc_mon=acc_mon)
             
         return score
     
@@ -149,17 +171,17 @@ class Pokedex():
     def aval_target_standard(self, ref_mon, acc_mon):
         score = np.int32(0)
 
-        for j in range(0, len(ref_mon[2])):
-            for k in range(0, len(ref_mon[2])):
-                if (ref_mon[2][j][k][3] == 255 and acc_mon[0][j][k][3] == 0) or (ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 255):
+        for j in range(0, len(ref_mon)):
+            for k in range(0, len(ref_mon)):
+                if ref_mon[j][k][3] != acc_mon[j][k][3]:
                     continue
-                elif ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 0:
+                elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
                     #score += np.int32(255*4)
                     score += np.int32(255*3)
                 else:
                     #for l in range (0, 4):
                     for l in range (0, 3):
-                        score += np.int32(255 - abs(np.int32(ref_mon[2][j][k][l]) - acc_mon[0][j][k][l]))
+                        score += np.int32(255 - abs(np.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
             
         return score
     
@@ -167,49 +189,49 @@ class Pokedex():
     def aval_target_grayscale(self, ref_mon, acc_mon):
         score = np.int32(0)
 
-        ref_grey = utils.to_grayscale(np.copy(ref_mon[2]))
-        acc_grey = utils.to_grayscale(np.copy(acc_mon[0]))
+        ref_grey = utils.to_grayscale(np.copy(ref_mon))
+        acc_grey = utils.to_grayscale(np.copy(acc_mon))
 
         for j in range(0, len(ref_grey)):
             for k in range(0, len(ref_grey)):
                 score += np.int32(255 - abs(np.int32(ref_grey[j][k]) - acc_grey[j][k]))
 
-        '''for j in range(0, len(ref_mon[2])):
-            for k in range(0, len(ref_mon[2])):
-                if ref_mon[2][j][k][3] != acc_mon[0][j][k][3]:
+        '''for j in range(0, len(ref_mon)):
+            for k in range(0, len(ref_mon)):
+                if ref_mon[j][k][3] != acc_mon[j][k][3]:
                     continue
-                elif ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 0:
+                elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
                     score += 255
                 else:
-                    ref_mean = int((np.int32(ref_mon[2][j][k][0]) + np.int32(ref_mon[2][j][k][1]) + np.int32(ref_mon[2][j][k][2]))/3)
-                    acc_mean = int((np.int32(acc_mon[0][j][k][0]) + np.int32(acc_mon[0][j][k][1]) + np.int32(acc_mon[0][j][k][2]))/3)
+                    ref_mean = int((np.int32(ref_mon[j][k][0]) + np.int32(ref_mon[j][k][1]) + np.int32(ref_mon[j][k][2]))/3)
+                    acc_mean = int((np.int32(acc_mon[j][k][0]) + np.int32(acc_mon[j][k][1]) + np.int32(acc_mon[j][k][2]))/3)
                     
                     #print(np.int32(255 - abs(ref_mean - acc_mean)))
                     score += np.int32(255 - abs(ref_mean - acc_mean))
                 
-                    #print(f'{len(ref_mon)}-{len(ref_mon[2])}-{len(ref_mon[2])}')
-                    #print(f'{len(acc_mon)}-{len(acc_mon[0])}-{len(acc_mon)}')'''
+                    #print(f'{len(ref_mon)}-{len(ref_mon)}-{len(ref_mon)}')
+                    #print(f'{len(acc_mon)}-{len(acc_mon)}-{len(acc_mon)}')'''
         return score
     
     def aval_target_binary(self, ref_mon, acc_mon):
         score = np.int32(0)
 
-        ref_bw = utils.to_black_n_white(np.copy(ref_mon[2]))
-        acc_bw = utils.to_black_n_white(np.copy(acc_mon[0]))
+        ref_bw = utils.to_black_n_white(np.copy(ref_mon))
+        acc_bw = utils.to_black_n_white(np.copy(acc_mon))
 
         for j in range(0, len(ref_bw)):
             for k in range(0, len(ref_bw)):
                 score += (1 * (ref_bw[j][k] == acc_bw[j][k]))
 
-        '''for j in range(0, len(ref_mon[2])):
-            for k in range(0, len(ref_mon[2])):
-                if ref_mon[2][j][k][3] != acc_mon[0][j][k][3]:
+        '''for j in range(0, len(ref_mon)):
+            for k in range(0, len(ref_mon)):
+                if ref_mon[j][k][3] != acc_mon[j][k][3]:
                     continue
-                elif ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 0:
+                elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
                     score += 1
                 else:
-                    ref_mean = int((np.int32(ref_mon[2][j][k][0]) + np.int32(ref_mon[2][j][k][1]) + np.int32(ref_mon[2][j][k][2]))/3)
-                    acc_mean = int((np.int32(acc_mon[0][j][k][0]) + np.int32(acc_mon[0][j][k][1]) + np.int32(acc_mon[0][j][k][2]))/3)
+                    ref_mean = int((np.int32(ref_mon[j][k][0]) + np.int32(ref_mon[j][k][1]) + np.int32(ref_mon[j][k][2]))/3)
+                    acc_mean = int((np.int32(acc_mon[j][k][0]) + np.int32(acc_mon[j][k][1]) + np.int32(acc_mon[j][k][2]))/3)
 
                     ref_bin = (ref_mean >= 128) * 1
                     acc_bin = (acc_mean >= 128) * 1
@@ -217,18 +239,99 @@ class Pokedex():
                     #print(np.int32(255 - abs(ref_mean - acc_mean)))
                     score += (1 - abs(ref_bin - acc_bin))
                 
-                    #print(f'{len(ref_mon)}-{len(ref_mon[2])}-{len(ref_mon[2])}')
-                    #print(f'{len(acc_mon)}-{len(acc_mon[0])}-{len(acc_mon)}')'''
+                    #print(f'{len(ref_mon)}-{len(ref_mon)}-{len(ref_mon)}')
+                    #print(f'{len(acc_mon)}-{len(acc_mon)}-{len(acc_mon)}')'''
         return score
     
     def aval_target_perfect(self, ref_mon, acc_mon):
         score = np.int32(0)
 
-        for j in range(0, len(ref_mon[2])):
-            for k in range(0, len(ref_mon[2])):
-                if np.array_equal(ref_mon[2][j][k], acc_mon[0][j][k]):
+        for j in range(0, len(ref_mon)):
+            for k in range(0, len(ref_mon)):
+                if np.array_equal(ref_mon[j][k], acc_mon[j][k]) or (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0):
                     score += 1
             
+        return score
+    
+    
+    #semiperfect
+    def aval_target_semi_perfect(self, ref_mon, acc_mon):
+        score = np.int32(0)
+
+        for j in range(0, len(ref_mon)):
+            for k in range(0, len(ref_mon)):
+                if ref_mon[j][k][3] != acc_mon[j][k][3]:
+                    continue
+                if (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0):
+                    score += 3
+                    continue
+                for l in range(0, 3):
+                    if ref_mon[j][k][l] == acc_mon[j][k][l]:
+                        score += 1
+            
+        return score
+    
+    #posterized
+    def aval_target_posterized(self, ref_mon, acc_mon):
+        ref_post = utils.posterize(np.copy(ref_mon))
+        acc_post = utils.posterize(np.copy(acc_mon))
+
+        score = self.aval_target_standard(ref_post, acc_post)
+            
+        return score
+
+    def aval_target_semi_perfect_posterized(self, ref_mon, acc_mon):
+        score = 0
+        
+        ref_post = utils.posterize(np.copy(ref_mon))
+        acc_post = utils.posterize(np.copy(acc_mon))
+
+        score = self.aval_target_semi_perfect(ref_post, acc_post)
+            
+        return score
+    
+    def aval_target_semi_perfect_posterized_weighted(self, ref_mon, acc_mon):
+        score = 0
+        
+        ref_post = utils.posterize(np.copy(ref_mon))
+        acc_post = utils.posterize(np.copy(acc_mon))
+        
+        for j in range(0, len(acc_post)):
+            for k in range(0, len(acc_post)):
+                if ref_post[j][k][3] != acc_post[j][k][3]:
+                    continue
+                if np.array_equal(ref_post[j][k], acc_post[j][k]):
+                    score += 4
+                    continue
+                if ref_post[j][k][3] == acc_post[j][k][3] and ref_post[j][k][3] == 0:
+                    score += 4
+                    continue
+                for l in range(0, 3):
+                    if ref_post[j][k][l] == acc_post[j][k][l]:
+                        score += 1
+
+        return score
+    
+    def aval_target_semi_perfect_posterized_weighted_borders(self, ref_mon, acc_mon):
+        score = 0
+        
+        ref_post = utils.posterize(np.copy(ref_mon))
+        acc_post = utils.posterize(np.copy(acc_mon))
+        
+        for j in range(0, len(acc_post)):
+            for k in range(0, len(acc_post)):
+                if ref_post[j][k][3] != acc_post[j][k][3]:
+                    continue
+                if np.array_equal(ref_post[j][k], acc_post[j][k]):
+                    score += max(4 * (2 * self.target_border_matrix[j][k][0]), 4)
+                    continue
+                if ref_post[j][k][3] == acc_post[j][k][3] and ref_post[j][k][3] == 0:
+                    score += max(4 * (2 * self.target_border_matrix[j][k][0]), 4)
+                    continue
+                for l in range(0, 3):
+                    if ref_post[j][k][l] == acc_post[j][k][l]:
+                        score += max(1 * (2 * self.target_border_matrix[j][k][0]), 1)
+
         return score
 
     # add aval_border
@@ -241,50 +344,104 @@ class Pokedex():
     # channel equal -> 1pt
     '''score = np.int32(0)
 
-        for j in range(0, len(ref_mon[2])):
-            for k in range(0, len(ref_mon[2])):
-                if (ref_mon[2][j][k][3] == 255 and acc_mon[0][j][k][3] == 0) or (ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 255):
+        for j in range(0, len(ref_mon)):
+            for k in range(0, len(ref_mon)):
+                if (ref_mon[j][k][3] == 255 and acc_mon[j][k][3] == 0) or (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 255):
                     continue
-                elif ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 0:
+                elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
                     #score += np.int32(255*4)
                     score += np.int32(255*3)
                 else:
                     #for l in range (0, 4):
                     for l in range (0, 3):
-                        score += np.int32(255 - abs(np.int32(ref_mon[2][j][k][l]) - acc_mon[0][j][k][l]))
+                        score += np.int32(255 - abs(np.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
             
         return score'''
     
     def aval_target_borders(self, ref_mon, acc_mon):
         score = np.int32(0)
         
-        for j in range(0, len(ref_mon[2])):
-            for k in range(0, len(ref_mon[2])):
-                base_score = 0
+        for j in range(0, len(ref_mon)):
+            for k in range(0, len(ref_mon)):
                 
-                if (ref_mon[2][j][k][3] == 255 and acc_mon[0][j][k][3] == 0) or (ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 255):
+                if ref_mon[j][k][3] != acc_mon[j][k][3]:
                     continue
-                elif ref_mon[2][j][k][3] == 0 and acc_mon[0][j][k][3] == 0:
-                    base_score += 1
-                elif np.array_equal(ref_mon[2][j][k], acc_mon[0][j][k]):
-                    base_score += 1
-                #else:
-                #    for l in range(3):
-                #        base_score += np.int32(255 - abs(np.int32(ref_mon[2][j][k][l]) - acc_mon[0][j][k][l]))
-                            
-                if self.target_border_matrix[j][k][0]:
-                    base_score = base_score * 2
-                if self.target_border_matrix[j][k][1]:
-                    base_score = base_score * 2
+                elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
+                    score += max(255*3, (255*3) * (2 * self.target_border_matrix[j][k][0]))
+                elif np.array_equal(ref_mon[j][k], acc_mon[j][k]):
+                    score += max(255*3, (255*3) * (2 * self.target_border_matrix[j][k][0]))
+                else:
+                    for l in range(3):
+                        scr_diff = np.int32(255 - abs(np.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
+                        score += max(scr_diff, scr_diff * 2 * self.target_border_matrix[j][k][0])
                     
-                score += base_score
+        
+        return score
+    
+    def aval_target_weighted_perfect_only_borders_hard_posterized(self, ref_mon, acc_mon):
+        score = 0
+        
+        ref_post = utils.posterize_hard(np.copy(ref_mon))
+        acc_post = utils.posterize_hard(np.copy(acc_mon))
+        
+        for j in range(0, len(acc_post)):
+            for k in range(0, len(acc_post)):
+                if ref_post[j][k][3] != acc_post[j][k][3]:
+                    continue
+                elif ref_post[j][k][3] == 0 and acc_post[j][k][3] == 0:
+                    score += max(255*3, (255*3) * (2 * self.target_border_matrix[j][k][0]))
+                elif np.array_equal(ref_post[j][k], acc_post[j][k]):
+                    score += max(255*3, (255*3) * (2 * self.target_border_matrix[j][k][0]))
+                else:
+                    for l in range(3):
+                        scr_diff = np.int32(255 - abs(np.int32(ref_post[j][k][l]) - acc_post[j][k][l]))
+                        score += scr_diff
+
+        return score
+
+    def aval_multiple(self, ref_mon, acc_mon):
+        f_score = 0
+        
+        std_score = self.aval_target_standard(ref_mon=ref_mon, acc_mon=acc_mon)
+        gr_score = self.aval_target_grayscale(ref_mon=ref_mon, acc_mon=acc_mon)
+        bw_score = self.aval_target_binary(ref_mon=ref_mon, acc_mon=acc_mon)
+        p_score = self.aval_target_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
+        sp_score = self.aval_target_semi_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
+        pst_score = self.aval_target_posterized(ref_mon=ref_mon, acc_mon=acc_mon)
+        b_score = self.aval_target_borders(ref_mon=ref_mon, acc_mon=acc_mon)
+        
+        f_score = ((std_score + b_score + pst_score)/2) + gr_score + (100 * bw_score) + (100 * p_score) + (50 * sp_score)
+        
+        
+        return f_score
+    
+    def aval_target_perfect_harsh(self, ref_mon, acc_mon):
+        score = self. aval_target_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
+        score = math.floor(math.floor(math.floor(score/3)/3)/3)
         
         return score
     
     
-    ##########################################
-
-    #Adicionar aval em greyscale.
+    def aval_target_mixed(self, ref_mon, acc_mon):
+        aval_type = (math.floor(self.aval_number/200)%5)
+        
+        if aval_type != (math.floor(self.aval_number-1/200)%5) and not(np.array_equal(ref_mon, acc_mon)):
+            self.target_mon[3] = self.aval_target(self.target_image, self.target_image)
+        
+        match aval_type:
+            case 0:
+                score = self.aval_target_standard(ref_mon=ref_mon, acc_mon=acc_mon)
+            case 1:
+                score = self.aval_target_grayscale(ref_mon=ref_mon, acc_mon=acc_mon)
+            case 2:
+                score = self.aval_target_binary(ref_mon=ref_mon, acc_mon=acc_mon)
+            case 3:
+                score = self.aval_target_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
+            case 4:
+                score = self.aval_target_borders(ref_mon=ref_mon, acc_mon=acc_mon)
+            
+        self.aval_number += 1
+        return score
 
     ####################################
     ############## OTHER ###############

@@ -7,6 +7,7 @@ import matplotlib.colors as colors
 import cv2
 
 import classes.utils as utils
+import classes.mutation as mutation
 
 debug = False
 
@@ -527,6 +528,62 @@ class Crossover():
         child_b = utils.get_difference_sprite(np.copy(img_b),np.copy(img_a))
         
         return child_a, child_b
+    
+    def crossover_mix_inbreeding(self, img_a, img_b):
+        child_x = np.zeros_like(img_a)
+                
+        mkaa = img_a[:,:,3] > 0
+        mkbb = img_b[:,:,3] > 0
+        
+        child_x[mkbb,3] = 255
+        child_x[mkaa,3] = 255
+        mkx = child_x[:,:,3] > 0
+        
+        child_x[mkx,0:2] =  np.add((np.add((np.copy(img_a[mkaa,0:2])//2),(np.copy(img_b[mkaa,0:2])//2)).astype(np.uint8))//2, (np.add((np.copy(img_a[mkbb,0:2])//2),(np.copy(img_b[mkbb,0:2])//2)).astype(np.uint8))//2).astype(np.uint8)
+        
+        score = 0
+        for i in range(child_x.shape[0]):
+            for j in range(child_x.shape[1]):
+                if np.array_equal(img_a[i][j], img_b[i][j]):
+                    score += (255 * 3)
+                    continue
+                elif img_a[i][j][3] == img_b[i][j][3] and img_a[i][j][3] == 0:
+                    score += (255 * 3)
+                    continue
+                elif img_a[i][j][3] != img_b[i][j][3]:
+                    continue
+                for l in range(3):
+                    score += 255 - abs(np.uint16(img_a[i][j]) - img_b[i][j])
+            
+            
+            child_a = np.copy(child_x)
+            child_b = np.copy(child_x)
+                    
+        if score/(child_x.shape[0] * child_x.shape[1] * 3 * 255) >= 0.92:
+            a_mut = randint(1,5)
+            b_mut = randint(2,6)
+            for _ in range(a_mut):
+                child_a = mutation.Mutation.mutate(child_a)
+            for _ in range(b_mut):
+                child_a = mutation.Mutation.mutate(child_b)
+            
+            
+
+        '''for j in range(0, img_a.shape[0]):
+            for k in range(0, img_a.shape[1]):
+                    if np.array_equal(img_a[j][k], img_b[j][k]):
+                        continue
+                    elif img_a[j][k][3] == 0 and img_b[j][k][3] != 0:
+                        child_a[j][k] = img_b[j][k]
+                    elif img_b[j][k][3] == 0 and img_a[j][k][3] != 0:
+                        child_b[j][k] = img_a[j][k]
+                    else:
+                        child_a[j][k] = np.ceil(np.add(np.multiply(img_a[j][k], op_con), np.multiply(img_b[j][k], 1-op_con)))
+                        child_b[j][k] = np.ceil(np.add(np.multiply(img_b[j][k], op_con), np.multiply(img_a[j][k], 1-op_con)))'''
+                        
+
+        return child_a, child_b
+        
         
         
     # crossover: no-cross (as shrimple as that)
@@ -584,9 +641,10 @@ class Crossover():
                 c_a = img_a.copy()
                 c_b = img_b.copy()
             case _:
-                print('uh-oh, crossover invalido')
+                print(f'uh-oh, crossover invalido:{cross_choice[0]}')
                 c_a = img_a.copy()
                 c_b = img_b.copy()
+                
 
 
         return c_a, c_b

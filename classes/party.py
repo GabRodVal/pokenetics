@@ -9,7 +9,7 @@ import classes.crossover as crossover
 import classes.fitness as fitness
 import classes.utils as utils
 
-debug = True
+debug = False
 
 class Party():
     def __init__(
@@ -27,18 +27,20 @@ class Party():
             reg_pop=False,
             regulate_type='wave',
             elitism=True,
+            pity=False,
             elitism_mutation=False,
             crossover_type=['bisect', 'swap_simple', 'swap_even', 'swap_cheater_rgba', 'swap_serial', 'swap_colors'],
             fitness_type='normalize',
             verbose=False,
-            save_all_imgs=True
+            save_all_imgs=True,
+            posterize=False
             ):
         
         self.score_type = score_type.lower()
         self.fitness_rate = pop_size
 
         # Pokedex
-        self.pokedex = pokedex.Pokedex(target_dex=target_dex, easy_shiny=easy_shiny, score_type=self.score_type, generation=generation)
+        self.pokedex = pokedex.Pokedex(target_dex=target_dex, easy_shiny=easy_shiny, score_type=self.score_type, generation=generation, posterize=posterize)
 
         self.target_dex = target_dex
         self.target_mon = self.pokedex.get_target_pokemon()
@@ -71,6 +73,7 @@ class Party():
         self.regulate_type = regulate_type
         #
         self.elitism = elitism
+        self.pity = pity
         self.elitism_mutation = elitism_mutation
         if self.elitism:
             self.elitism_rate = elitism_rate
@@ -158,40 +161,51 @@ class Party():
     #apply min and max on base regulate function
     # Test instead of doubling waves using prime numbers
     def regulate_self_wavering(self):
-        if self.reg_pop:
-            self.pop_size = min(max(round(self.og_pop_size + ((self.og_pop_size/2) * math.sin(math.radians(self.cur_gen * 3)))), 8), self.pokedex.get_pokedex_length())
+        #if self.reg_pop:
+        #    self.pop_size = min(max(round(self.og_pop_size + ((self.og_pop_size/2) * math.cos(math.radians(self.cur_gen * 3)))), 8), self.pokedex.get_pokedex_length())
         # Test lower variation rate for crossover? 0.2? 0.25? 0.15? higher maybe? 0.33?
-        self.crossover_rate = 0.6 + (0.3 * math.sin(math.radians(self.cur_gen * 5)))
+        self.crossover_rate = 0.64 + (0.32 * math.cos(math.radians(self.cur_gen * 2 )))
 
         if self.elitism:
-            self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate * 0.875) * math.sin(math.radians(self.cur_gen * 7))), 0.005), 0.5)
+            self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate * 0.875) * math.sin(math.radians(self.cur_gen * 3))), 0.005), 0.5) 
         
-        fit_reg =False
-        if fit_reg:
-            if self.max_gen >= 300:
-                self.fitness_rate = min(max(self.pop_size * 2 * math.cos(math.atan(math.radians(self.cur_gen/2))), (max((self.cur_gen/300) -3, 0) * 0.125) * (self.pop_size * math.sin(math.radians(self.cur_gen)))) * math.cos(math.sin(math.radians(self.cur_gen))), self.pop_size*2)
-            else:
-                self.fitness_rate = self.og_pop_size + ((self.og_pop_size * 0.925) * math.sin(math.radians(self.cur_gen * 2)))
-        
-        
-        self.mutation_rate = min(max(self.og_mutation_rate + (((self.og_mutation_rate/2) * math.sin(math.radians(self.cur_gen * 11))) * max(0.4 + ((self.cur_gen * 0.0012) * math.cos(self.cur_gen/8)), 0.01) ), 0.001), 0.75)
+        self.mutation_rate = self.og_mutation_rate + ((self.og_mutation_rate/2) * math.sin(math.radians(self.cur_gen * 5))) + ((self.cur_gen/self.max_gen) * 0.4)
 
     def get_new_crossover_mutation(self):
 
         mama, papa = self.fitness.selection()
         c_a, c_b = self.crossover.crossover_couple(mama, papa)
+        #print('Crossovers_crossing: OK')
 
         if randint(0, 100_000) < (self.mutation_rate * 100_000):
             c_a = self.mutation.mutate(c_a)
         if randint(0, 100_000) < (self.mutation_rate * 100_00):
             c_b = self.mutation.mutate(c_b)
+        #print('Crossovers_MUTANT: OK')
 
         return c_a, c_b
 
 
     def initial_population(self):
         poke_keys = self.pokedex.get_pokedex_keys()
-
+        
+        factor = 8
+        
+        imio.imwrite(f'{self.base_dir}/target.png', utils.resize_by_factor(self.target_mon[2], factor))
+        
+        border_1, border_2 = self.pokedex.get_borders()
+        imio.imwrite(f'{self.base_dir}/target_b1.png', utils.resize_by_factor(border_1, factor))
+        imio.imwrite(f'{self.base_dir}/target_b2.png', utils.resize_by_factor(border_2, factor))
+        
+        gray_target = utils.to_rgba(utils.to_grayscale(np.copy(self.target_mon[2])))
+        imio.imwrite(f'{self.base_dir}/target_gray.png', utils.resize_by_factor(gray_target, factor))
+        bw_target = utils.to_rgba(utils.to_black_n_white(np.copy(self.target_mon[2])))
+        imio.imwrite(f'{self.base_dir}/target_bw.png', utils.resize_by_factor(bw_target, factor))
+        posterized_target = utils.posterize(np.copy(self.target_mon[2]))
+        imio.imwrite(f'{self.base_dir}/target_post.png', utils.resize_by_factor(posterized_target, factor))
+        hard_posterized_target = utils.posterize_hard(np.copy(self.target_mon[2]))
+        imio.imwrite(f'{self.base_dir}/target_h_post.png', utils.resize_by_factor(hard_posterized_target, factor))
+        
         max_pull = min(self.pop_size, math.floor(self.pokedex.get_pokedex_length() * 0.99))
         pop_dex = choices(poke_keys, k=max_pull)
         for pk in pop_dex:
@@ -223,15 +237,24 @@ class Party():
             pkm_a, pkm_b = self.get_new_crossover_mutation()       
             new_gen.append(pkm_a)
             new_gen.append(pkm_b)
+        if debug:print('Crossovers: OK')
         
         sorted_team = sorted(self.team, key=lambda x: x[1])
+        if debug:print('Team sort: OK')
         if self.elitism:
             most_fit_mon = sorted_team.pop()
             if self.elitism_mutation:
                 fittest_few.append(self.mutation.mutate(np.copy(most_fit_mon[0])))
             fittest_few.append(most_fit_mon[0])
             if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100}_SR0.png', most_fit_mon[0])
+        if self.pity:
+            least_fit_mon = sorted_team.pop(0)
+            if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(least_fit_mon[1]/self.target_mon[3])*100}_FFF0.png', most_fit_mon[0])
+            new_gen.append(least_fit_mon[0])
+            if self.elitism_mutation:
+                new_gen.append(self.mutation.mutate(np.copy(most_fit_mon[0])))
         
+        if debug:print('Elitism/Pity: OK')
         for iter in range(len(self.team)):
             if self.elitism and (len(fittest_few) < self.pop_size * self.elitism_rate) and len(sorted_team) > 0:
                 # or... just sort it once and pop shit until you're done
@@ -247,15 +270,19 @@ class Party():
                 imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(old_poke[1]/self.target_mon[3])*100}_C{iter}.png', old_poke[0])
         
         self.team.clear()
+        if debug:print('save_imgs: OK')
         
         if self.elitism:
             for ft in fittest_few:
                 new_gen.append(ft)
         
+        if debug:print('Elite append: OK')
+        
         dupelen = len(new_gen)
         self.team = utils.remove_dupes(new_gen).copy()
         unqlen = len(self.team)
         new_gen.clear()
+        if debug:print('remove dupes: OK')
         
         #for pk in new_gen:
         #    self.team.append(pk)
@@ -273,23 +300,12 @@ class Party():
                     self.team.append([self.pokedex.get_another_pokemon(dk), 0])
                 
     def score_party(self):
-        #if self.score_type == 'RGBA'.lower():
         for it in range(len(self.team)):
-            self.team[it][1] = self.pokedex.aval_target(self.target_mon, self.team[it])
-        '''elif self.score_type == 'Grayscale'.lower():
-            for it in range(len(self.team)):
-                self.team[it][1] = self.pokedex.aval_target_grayscale(self.target_mon, self.team[it])
-        elif self.score_type == 'BW'.lower():
-            for it in range(len(self.team)):
-                self.team[it][1] = self.pokedex.aval_target_binary(self.target_mon, self.team[it])
-        elif self.score_type == 'Perfect'.lower():
-            for it in range(len(self.team)):
-                self.team[it][1] = self.pokedex.aval_target_perfect(self.target_mon, self.team[it])'''
-                
-        #fit_team = self.fitness.get_team_fitness_score(self.team)
-        #self.team = fit_team
-
+            self.team[it][1] = self.pokedex.aval_target(self.target_mon[2], self.team[it][0])
         self.cur_gen += 1
+    
+    def get_true_score(self, pkm):
+        return self.pokedex.aval_target_standard(self.target_mon[2], pkm)
 
 
     def apply_fitness(self):
