@@ -74,7 +74,6 @@ class Mutation():
                 sml = utils.resize_by_factor(np.copy(pk_img), 0.5)
                 col = np.hstack((sml, sml))
                 pk_img = np.vstack((col, col))
-                    #laplacian
             case 16:
                 pk_img = cv2.blur(pk_img,(3,3))
             case 17:
@@ -121,6 +120,8 @@ class Mutation():
                 pk_img = cv2.addWeighted(pk_img, 2.0, gauss, -1.0, 0)
             case 29:
                 pk_img = self.visible_mono(pk_img)
+            #laplacian
+
             case _:
                 upper_range = math.floor(pk_img.shape[0] * 0.75)
                 lower_range = math.floor(pk_img.shape[0] * 0.25)

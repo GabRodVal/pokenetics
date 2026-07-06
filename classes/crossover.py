@@ -230,8 +230,109 @@ class Crossover():
         else:
             return img_a, img_b
 
+    def crossover_swap_comp(self, img_a, img_b):
+        comp_f = True
+        child_a = np.copy(img_a)
+        child_b = np.copy(img_b)
+        while comp_f:
+            sp = randint(2,5)
+                
+            match sp:
+                case 2:
+                    if img_a.shape[0] % 2 == 0:
+                        frac = img_a.shape[0] // 2
+                        chunk = randint(0,frac)
+                        comp_f = False
+                        if randint(0,1):
+                            child_a[chunk:(chunk + frac)] = img_b[chunk:(chunk + frac)]
+                            child_b[chunk:(chunk + frac)] = img_a[chunk:(chunk + frac)]
+                        else:
+                            child_a[:, chunk:(chunk + frac)] = img_b[:, chunk:(chunk + frac)]
+                            child_b[:, chunk:(chunk + frac)] = img_a[:, chunk:(chunk + frac)]
+                case 3:
+                    if img_a.shape[0] % 3 == 0:
+                        frac = img_a.shape[0] // 3
+                        #chunk = randint(0,frac)
+                        knd = randint(0,2)
+                        comp_f = False
+                        match knd:
+                            case 0:
+                                child_a[frac:(-1 * frac)] = img_b[frac:(-1 * frac)]
+                                child_b[frac:(-1 * frac)] = img_a[frac:(-1 * frac)]
+                            case 1:
+                                child_a[:, frac:(-1 * frac)] = img_b[:, frac:(-1 * frac)]
+                                child_b[:, frac:(-1 * frac)] = img_a[:, frac:(-1 * frac)]
+                            case 2:
+                                child_a[frac:(-1 * frac), frac:(-1 * frac)] = img_b[frac:(-1 * frac), frac:(-1 * frac)]
+                                child_b[frac:(-1 * frac), frac:(-1 * frac)] = img_a[frac:(-1 * frac), frac:(-1 * frac)]
+                case 4:
+                    if img_a.shape[0] % 4 == 0:
+                        frac = img_a.shape[0] // 4
+                        knd = randint(0,2)
+                        comp_f = False
+                        match knd:
+                            case 0:
+                                child_a[frac:(-1 * frac)] = img_b[frac:(-1 * frac)]
+                                child_b[frac:(-1 * frac)] = img_a[frac:(-1 * frac)]
+                            case 1:
+                                child_a[:, frac:(-1 * frac)] = img_b[:, frac:(-1 * frac)]
+                                child_b[:, frac:(-1 * frac)] = img_a[:, frac:(-1 * frac)]
+                            case 2:
+                                child_a[frac:(-1 * frac), frac:(-1 * frac)] = img_b[frac:(-1 * frac), frac:(-1 * frac)]
+                                child_b[frac:(-1 * frac), frac:(-1 * frac)] = img_a[frac:(-1 * frac), frac:(-1 * frac)]
+                case 5:
+                    if img_a.shape[0] % 5 == 0:
+                        frac = img_a.shape[0] // 5
+                        knd = randint(0,2)
+                        comp_f = False
+                        match knd:
+                            case 0:
+                                child_a[2*frac:(-2 * frac)] = img_b[2*frac:(-2 * frac)]
+                                child_b[2*frac:(-2 * frac)] = img_a[2*frac:(-2 * frac)]
+                            case 1:
+                                child_a[:, 2*frac:(-2 * frac)] = img_b[:, 2*frac:(-2 * frac)]
+                                child_b[:, 2*frac:(-2 * frac)] = img_a[:, 2*frac:(-2 * frac)]
+                            case 2:
+                                child_a[2*frac:(-2 * frac), 2*frac:(-2 * frac)] = img_b[2*frac:(-2 * frac), 2*frac:(-2 * frac)]
+                                child_b[2*frac:(-2 * frac), 2*frac:(-2 * frac)] = img_a[2*frac:(-2 * frac), 2*frac:(-2 * frac)]
+        
+        return child_a, child_b
 
+    def crossover_swap_squares(self, img_a, img_b):
+        comp_f = True
+        child_a = np.copy(img_a)
+        child_b = np.copy(img_b)
+        while comp_f:
+            sp = randint(2,5)
+                
+            match sp:
+                case 2:
+                    if img_a.shape[0] % 2 == 0:
+                        sq = (2,2)
+                        comp_f = False
+                case 3:
+                    if img_a.shape[0] % 3 == 0:
+                        sq = (3,3)
+                        comp_f = False
+                case 4:
+                    if img_a.shape[0] % 4 == 0:
+                        sq = (4,4)
+                        comp_f = False
+                case 5:
+                    if img_a.shape[0] % 5 == 0:
+                        sq = (5,5)
+                        comp_f = False
+        
 
+        for j in range(0, img_a.shape[0], sq[0]):
+            for k in range(0, img_a.shape[1], sq[1]):
+                pix = randint(0,1)
+                if pix:
+                    child_a[j:(j+sq[0]), k:(k+sq[1])] = np.copy(img_b[j:(j+sq[0]),k:(k+sq[1])])
+                    child_b[j:(j+sq[0]), k:(k+sq[1])] = np.copy(img_a[j:(j+sq[0]),k:(k+sq[1])])
+
+        return child_a, child_b
+        
     def crossover_swap_even(self, img_a, img_b):
         child_a = np.copy(img_a)
         child_b = np.copy(img_b)
@@ -637,6 +738,10 @@ class Crossover():
                 c_a, c_b = self.crossover_mix_subtract(img_a, img_b)
             case 'difference':
                 c_a, c_b = self.crossover_difference(img_a, img_b)
+            case 'swap_comp':
+                c_a, c_b = self.crossover_swap_comp(img_a, img_b)
+            case 'swap_squares':
+                c_a, c_b = self.crossover_swap_squares(img_a, img_b)
             case 'no_cross':
                 c_a = img_a.copy()
                 c_b = img_b.copy()

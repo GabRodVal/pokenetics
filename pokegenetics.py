@@ -83,6 +83,8 @@ class PokeGenetics():
             elitism=True,
             pity=False,
             elitism_mutation=False,
+            elitism_interval=0,
+            elite_couple=False,
             crossover_type=[
                 'mix_essential',
                 'bisect',
@@ -114,6 +116,8 @@ class PokeGenetics():
             elitism=elitism,
             pity=pity,
             elitism_rate=elitism_rate,
+            elitism_interval=elitism_interval,
+            elite_couple=elite_couple,
             max_gen=max_gen,
             score_type=score_type.lower(),
             reg_pop=reg_pop,
@@ -134,8 +138,9 @@ class PokeGenetics():
         self.generation = generation
         #For Statistics
         self.cur_gen = 0
-        self.h_scores = []
-        self.true_scores = []
+        self.h_scores = []#
+        self.true_scores = []#
+        self.low_scores = []#
         self.cross_values = []
         self.mut_values = []
         self.pop_values = []
@@ -144,6 +149,7 @@ class PokeGenetics():
         self.fitness_values = []
         self.score_values = []
         self.first_stamp = 0
+        self.start_time = ''
         self.old_stamp = 0
         self.cur_stamp = 0
         self.first_score = 0
@@ -163,6 +169,8 @@ class PokeGenetics():
         self.elitism = elitism
         self.pity = pity
         self.elitism_mutation = elitism_mutation
+        self.elitism_interval = elitism_interval
+        self.elite_couple = elite_couple
         self.fitness_type = fitness_type
         self.elitism_rate = elitism_rate
         self.score_type = score_type.lower()
@@ -188,6 +196,8 @@ class PokeGenetics():
 
         most_fit_mon = self.party.get_elite_pokemon()
         target_mon = self.party.get_target_pokemon()
+        best_mon = self.party.get_GOAT_pokemon()
+        
         lab=''
         
         if self.serial_experiment:
@@ -195,10 +205,15 @@ class PokeGenetics():
 
         self.cur_score = int(most_fit_mon[1])
         self.cur_stamp = datetime.datetime.now().timestamp()
-
+        #if self.pity:
+        #    least_fit_mon = self.party.get_lowest_score()
+        #    self.lowest_score = float(least_fit_mon)
+        #    self.low_scores.append(self.lowest_score)
+            
+            
         stats = self.party.get_stats()
 
-        if self.cur_score <= self.old_score:
+        if self.cur_score <= self.old_score and self.cur_score <= best_mon[1]:
             self.no_change_turns += 1
             self.no_change_total += 1
             if self.no_change_turns > self.no_change_max:
@@ -214,7 +229,7 @@ class PokeGenetics():
                 print(f'\nCruzamento Iniciado - Alvo: {target_mon[1]} ({target_mon[0]}) | Pontuação: {(target_mon[3])}pts | {self.fitness_type} | EM:{self.elitism_mutation}{self.auto_regulate*f' | Auto:{self.auto_regulate} | Regulate: {self.regulate_type}'}\n')
                 print(f'{lab}{1:03d}° Gen - Valor Inicial: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% = 0.00% | {(self.cur_score)}pts | {self.pop_size} Mons | {self.max_gen} Gens | 0.0s -> {(self.cur_stamp - self.first_stamp):.1f}s')
             else:
-                if self.cur_score > self.old_score:
+                if self.cur_score > self.old_score and self.cur_score > best_mon[1]:
                     print(f'\033[92m{lab}{self.cur_gen:03d}° Gen - Resultado: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% ({((self.cur_score/target_mon[3]) * 100):.3f}%) | {(self.cur_score)}pts (+{((self.cur_score - self.old_score)):06d}pts) -> ({(target_mon[3]-self.cur_score)}pts/{(target_mon[3]-self.first_score)}pts) | {(self.cur_stamp - self.old_stamp):.1f}s -> {(self.cur_stamp - self.first_stamp):.1f}s')
                 elif self.cur_score < self.old_score:
                     print(f'\033[91m{lab}{self.cur_gen:03d}° Gen - Resultado: { (((self.cur_score - self.first_score)/(target_mon[3] - self.first_score)) * 100):.2f}% ({((self.cur_score/target_mon[3]) * 100):.3f}%) | {(self.cur_score)}pts (-{(abs(self.cur_score - self.old_score)):06d}pts) -> ({(target_mon[3]-self.cur_score)}pts/{(target_mon[3]-self.first_score)}pts) | {(self.cur_stamp - self.old_stamp):.1f}s -> {(self.cur_stamp - self.first_stamp):.1f}s')
@@ -248,7 +263,7 @@ class PokeGenetics():
 
 
         
-        if len(self.top_league) < 1 or abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3]/400):
+        if len(self.top_league) < 1 or abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3]/1200):
             factor = math.ceil(256/most_fit_mon[0].shape[0])
 
             self.top_league.append(most_fit_mon)
@@ -276,12 +291,23 @@ class PokeGenetics():
                 imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_post.png', utils.resize_by_factor(most_fit_post, factor))
                 most_fit_difference = utils.get_difference_sprite(utils.posterize(np.copy(target_mon[2])), most_fit_post)
                 imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postdiff.png', utils.resize_by_factor(most_fit_difference, factor))
+                
+            if self.score_type == 'Binposter':
+                most_fit_post =  utils.posterize_binary(np.copy(most_fit_mon[0]))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postbin.png', utils.resize_by_factor(most_fit_post, factor))
+                most_fit_difference = utils.get_difference_sprite(utils.posterize(np.copy(target_mon[2])), most_fit_post)
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postbindiff.png', utils.resize_by_factor(most_fit_difference, factor))
         
         if len(self.top_league) > 1800:
                 self.top_league = self.top_league[:900] + self.top_league[-900:]
 
     def hall_of_fame(self):
         top_gif = []
+        GOAT_mon = self.party.get_GOAT_pokemon()
+        target = self.party.get_target_pokemon()
+        imio.imwrite(f'{self.base_dir}/DIY_{target[1]}.png', GOAT_mon[0])
+        self.top_league.append(GOAT_mon)
+        size_fac = math.floor(512/GOAT_mon[0].shape[0])
         for iter in range(len(self.top_league)):
         #    imio.imwrite(f'{self.base_dir}/best/{iter+1}_s{self.top_league[iter][1]}.png', self.top_league[iter][0])
 
@@ -291,21 +317,24 @@ class PokeGenetics():
             mk2 = champ_img[:, :, 3] < 255
             champ_img[mk2, 3] = 255
 
-            champ_img = Image.fromarray(champ_img).convert("RGB").resize((480, 480), Image.Resampling.NEAREST)
+            
+            champ_img = utils.resize_by_factor(champ_img, size_fac)
+            champ_img = Image.fromarray(champ_img).convert("RGB")
 
             if iter == 0 or iter == (len(self.top_league)-1):
-                for _ in itertools.repeat(None, max(min(10, math.ceil(len(self.top_league)/20)), 8)):
+                for _ in itertools.repeat(None, max(min(20, math.ceil(len(self.top_league)/10)), 40)):
                     top_gif.append(champ_img)
             else:
                 top_gif.append(champ_img)
 
-        imageio.mimsave(f'{self.base_dir}/best/best_mon.gif', top_gif, format='GIF', duration=80, loop=0)
+        imageio.mimsave(f'{self.base_dir}/best_mon.gif', top_gif, format='GIF', duration=80, loop=0)
     
     
     
     # Add a post 99 graph, and maybe something else with it by side (total points per gen?)
     def plot_progress(self):
         target_mon = self.party.get_target_pokemon()
+        fitness_list = self.party.get_fitness_list()
         
         plt.figure(figsize=(24, 18))
         
@@ -332,8 +361,12 @@ class PokeGenetics():
         main_fig.set_xlabel(f"Generation - Avg {mean(self.h_scores):.1f}")
         main_fig.imshow(plt_fig, aspect='auto',extent=[-(len(self.h_scores)/100), len(self.h_scores)-1, min(min(self.h_scores), min(self.true_scores))-0.1, max(max(self.h_scores),max(self.true_scores))+0.1])
         main_fig.grid()
-        main_fig.plot(self.h_scores, '#6a329f', label='score', linewidth=1.6)
+        main_fig.plot(self.h_scores, '#6a329f', label='main_score', linewidth=1.6)
         main_fig.plot(self.true_scores, '#DD0022', label='true_score', linewidth=1.4)
+        #if self.pity:
+        #    main_fig.plot(self.low_scores, '#EE8844', label='low_score', linewidth=1.4)
+
+        main_fig.legend()
 
         scr_h1_fig.set_title("H1")
         scr_h1_fig.grid()
@@ -355,9 +388,9 @@ class PokeGenetics():
         elt_fig.grid()
         elt_fig.plot(self.elt_values, '#36a4bc', label='elt_rate', linewidth=0.8)
 
-        fit_fig.set_title(f"Max Fitness - Avg {mean(self.fitness_values):.1f}")
+        fit_fig.set_title(f"{self.fitness_type.capitalize()}")
         fit_fig.grid()
-        fit_fig.plot(self.fitness_values, '#a64d79', label='max_fitness', linewidth=0.8)
+        fit_fig.plot(fitness_list, "#9c0d54", label='max_fitness', linewidth=0.8)
 
         mut_fig.set_title(f"Mutation Rate - Avg {mean(self.mut_values):.2f}%")
         mut_fig.grid()
@@ -396,6 +429,8 @@ class PokeGenetics():
             'generation': self.generation,
             'total_time': (self.cur_stamp - self.first_stamp),
             'avg_time_p_gen': ((self.cur_stamp - self.first_stamp)/self.cur_gen),
+            'start_time': self.start_time,
+            'end_time': datetime.datetime.today(),
             #'time':f'{(self.cur_stamp - self.first_stamp)} | avg {((self.cur_stamp - self.first_stamp)/self.cur_gen):.4f}',
             'turns_run': self.cur_gen,
             'max_turns': self.max_gen,
@@ -414,6 +449,8 @@ class PokeGenetics():
             'elitism_mutation': self.elitism_mutation,
             'original_elitism_rate': self.elitism_rate,
             'average_elitism_rate': mean(self.elt_values),
+            'elitism_interval': self.elitism_interval,
+            'elite_couple': self.elite_couple,
             'pity': self.pity,
             #'elitism': f'on: {self.elitism} | mut:{self.elitism_mutation} - {self.elitism_rate}',
             'fitness_type':self.fitness_type,
@@ -438,6 +475,10 @@ class PokeGenetics():
     # ADD PARALLEL RUN USING THE DIFFERENCE SPRITE AS A PARAMETER
     # RESET IT EVERY X00 GENERATIONS
     # WRITE THE DAMN TABLE
+    def run_parallel_population(self, target, population, fitness_type, score_type):
+        pass
+    
+    
     def run(self):
         ###self.initial_population()
         ###self.aval_target()
@@ -451,10 +492,11 @@ class PokeGenetics():
         keyboard.add_hotkey('ctrl+q', break_loop, suppress=True, trigger_on_release=True)
 
         self.first_stamp = datetime.datetime.now().timestamp()
+        self.start_time = datetime.datetime.fromtimestamp(self.first_stamp)
         self.old_stamp = self.first_stamp
         target_mon = self.party.get_target_pokemon()
 
-        self.base_dir = f'runs/{(f'SE{self.serial_label:02d}-')*self.serial_experiment}{str(self.first_stamp)[2:9]}-{target_mon[1]}-{self.score_type}-{f'G{self.generation}'}-{self.crossover_type[0]}-{'pp-' * (len(self.crossover_type)>=2)}p{self.pop_size}g{self.max_gen}'
+        self.base_dir = f'runs/{(f'SE{self.serial_label:02d}-')*self.serial_experiment}{str(self.first_stamp)[2:9]}-{target_mon[1]}-{self.score_type}-{f'G{self.generation}'}-p{self.pop_size}g{self.max_gen}'
         self.party.set_base_dir(self.base_dir)
 
         self.create_dir(cur_dir=self.base_dir)
@@ -463,6 +505,7 @@ class PokeGenetics():
 
 
         ############################################
+        self.party.create_target_ref_img()
         self.party.initial_population()
         self.party.score_party()
         self.cur_gen = self.party.get_cur_gen()

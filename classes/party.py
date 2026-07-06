@@ -29,6 +29,8 @@ class Party():
             elitism=True,
             pity=False,
             elitism_mutation=False,
+            elitism_interval=0,
+            elite_couple=False,
             crossover_type=['bisect', 'swap_simple', 'swap_even', 'swap_cheater_rgba', 'swap_serial', 'swap_colors'],
             fitness_type='normalize',
             verbose=False,
@@ -55,7 +57,7 @@ class Party():
         self.fit_team = []
 
         self.base_dir = ''
-        
+        self.elitism_interval = (elitism_interval +1)
         #
         self.og_pop_size = pop_size
         self.pop_size = pop_size
@@ -80,6 +82,8 @@ class Party():
         else:
             self.elitism_rate = 0
         self.og_elitism_rate = self.elitism_rate
+        self.best_mon = []
+        self.elite_couple = elite_couple
         #
         self.fitness_rate = self.og_pop_size
         self.fitness_list = []
@@ -126,13 +130,13 @@ class Party():
 
     def regulate_self_standard(self):
         self.crossover_rate = 0.48 + (0.36 - (0.36*(self.cur_gen/self.max_gen)))
-        self.mutation_rate = 0.005 + max(0.155 - (0.155 * ((self.max_gen - self.cur_gen)/self.max_gen)), 0)
+        self.mutation_rate = 0.005 + max(0.355 - (0.355 * ((self.max_gen - self.cur_gen)/self.max_gen)), 0)
         
         #if self.elitism:
         #    self.elitism_rate = max(min(0.50, (self.og_elitism_rate/2) + ((0.50 - (self.og_elitism_rate/2))/(self.cur_gen/self.max_gen))), self.og_elitism_rate/2)
 
         if self.reg_pop:
-            self.pop_size = math.floor(max(8, (np.int32(self.og_pop_size * (1.5 * (self.cur_gen/self.max_gen))))))
+            self.pop_size = math.floor(max(8, (np.int32(self.og_pop_size * (1.2 * (self.cur_gen/self.max_gen))))))
 
         #fit_reg = False
         #if fit_reg:
@@ -169,11 +173,12 @@ class Party():
         if self.elitism:
             self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate * 0.875) * math.sin(math.radians(self.cur_gen * 3))), 0.005), 0.5) 
         
-        self.mutation_rate = self.og_mutation_rate + ((self.og_mutation_rate/2) * math.sin(math.radians(self.cur_gen * 5))) + ((self.cur_gen/self.max_gen) * 0.4)
+        self.mutation_rate = self.og_mutation_rate + ((self.og_mutation_rate/2) * math.sin(math.radians(self.cur_gen * 5))) + ((self.cur_gen/self.max_gen) * 0.225)
 
     def get_new_crossover_mutation(self):
 
         mama, papa = self.fitness.selection()
+        #select max 3 crossover types for the rest of the turn
         c_a, c_b = self.crossover.crossover_couple(mama, papa)
         #print('Crossovers_crossing: OK')
 
@@ -183,6 +188,17 @@ class Party():
             c_b = self.mutation.mutate(c_b)
         #print('Crossovers_MUTANT: OK')
 
+        return c_a, c_b
+
+    def royal_marriage(self, el_a, el_b):
+        c_a, c_b = self.crossover.crossover_couple(el_a, el_b)
+        print('AAAAAAAAAAAA')
+        if self.elitism_mutation:
+            if randint(0, 100_000) < (self.mutation_rate * 100_000):
+                c_a = self.mutation.mutate(c_a)
+            if randint(0, 100_000) < (self.mutation_rate * 100_000):
+                c_b = self.mutation.mutate(c_b)
+                
         return c_a, c_b
 
     def create_target_ref_img(self):
@@ -228,6 +244,12 @@ class Party():
     def get_target_pokemon(self):
         return self.pokedex.get_target_pokemon()
 
+    def get_GOAT_pokemon(self):
+        return self.best_mon.copy()
+    
+    def selection_tournament(self):
+        choices
+    
     #maybe its time to implement steady state...
     def populate_new_gen(self):
         new_gen = []
@@ -245,21 +267,27 @@ class Party():
         if debug:print('Team sort: OK')
         if self.elitism:
             most_fit_mon = sorted_team.pop()
-            if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
-                fittest_few.append(self.mutation.mutate(np.copy(most_fit_mon[0])))
-            else:
-                fittest_few.append(most_fit_mon[0])
-            if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100}_SR0.png', most_fit_mon[0])
-        if self.pity:
-            least_fit_mon = sorted_team.pop(0)
-            if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(least_fit_mon[1]/self.target_mon[3])*100}_FFF0.png', most_fit_mon[0])
-            new_gen.append(least_fit_mon[0])
-            if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
-                new_gen.append(self.mutation.mutate(np.copy(least_fit_mon[0])))
+            if len(self.best_mon) < 1:
+                self.best_mon = most_fit_mon.copy()
+            elif self.best_mon[1] < most_fit_mon[1]:
+                self.best_mon = most_fit_mon.copy()
+                
+            if self.cur_gen % self.elitism_interval == 0:
+                if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
+                        fittest_few.append(self.mutation.mutate(np.copy(self.best_mon[0])))
+                else:
+                    fittest_few.append(np.copy(self.best_mon[0]))
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100}_SR0.png', most_fit_mon[0])
+            if self.pity:
+                least_fit_mon = sorted_team.pop(0)
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(least_fit_mon[1]/self.target_mon[3])*100}_FFF0.png', most_fit_mon[0])
+                new_gen.append(least_fit_mon[0])
+                if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
+                    new_gen.append(self.mutation.mutate(np.copy(least_fit_mon[0])))
         
         if debug:print('Elitism/Pity: OK')
         for iter in range(len(self.team)):
-            if self.elitism and (len(fittest_few) < self.pop_size * self.elitism_rate) and len(sorted_team) > 0:
+            if self.elitism and (len(fittest_few) < self.pop_size * self.elitism_rate) and len(sorted_team) > 0 and self.cur_gen % self.elitism_interval == 0:
                 # or... just sort it once and pop shit until you're done
                 heir = sorted_team.pop()
                 if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000): #conditional?
@@ -275,7 +303,7 @@ class Party():
         self.team.clear()
         if debug:print('save_imgs: OK')
         
-        if self.elitism:
+        if self.elitism and self.cur_gen % self.elitism_interval == 0:
             for ft in fittest_few:
                 new_gen.append(ft)
         
@@ -309,8 +337,18 @@ class Party():
     
     def get_true_score(self, pkm):
         return self.pokedex.aval_target_standard(self.target_mon[2], pkm)
-
-
+    
+    def get_lowest_score(self):
+        t_c = self.team.copy()
+        s_team = sorted(t_c, key=lambda x: x[1], reverse=True)
+        #return max(team, key=lambda elemento: elemento[1])
+        low_pkm = s_team.pop()
+        return ((low_pkm[1]/self.target_mon[3]) * 100.0)
+    
     def apply_fitness(self):
         self.fit_team = self.fitness.get_team_fitness_score(self.team)
 
+    def get_fitness_list(self):
+        f_list = self.fitness.get_fitness_list()
+        f_values = [f[1] for f in f_list]
+        return f_values

@@ -6,6 +6,9 @@ import math
     
     
 HEX_TABLE = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
+
+def to_8bit_safe(num):
+    return np.uint8(max(min(num, 255),0))
     
 def to_grayscale(image):
     #mask = img[:,:,3] == 0
@@ -77,6 +80,17 @@ def to_rgba(img):
                 temp_img[i][j][3] = 255
     
     return temp_img
+
+def rgba_to_lab(img):
+    #print(math.dist(p1, p2)*96*96)
+    mk = img[:,:,3] < 255
+    rgb_img = np.copy(img)
+    rgb_img[mk] = [255,255,255,255]
+
+    tech_rgb = rgb_img[:,:, 0:3]
+    lab_img = cv2.cvtColor(tech_rgb,cv2.COLOR_RGB2LAB)
+    
+    return lab_img
 
 def posterize(image):
     #[ 0, 68, 136, 204, 255] #5
@@ -211,7 +225,8 @@ edge_mat_2 = [
     ]
 
 def find_edges(img):
-    g_img = to_grayscale(posterize_hard(img))
+    #g_img = to_black_n_white(img)
+    g_img = to_grayscale(img)
     
     edge_mat_1 = [
     [ 0, -1, 0],
@@ -224,60 +239,12 @@ def find_edges(img):
     [-1,  8, -1],
     [-1, -1, -1]
     ]
-    
-    #compass
-    '''edge_mat_n = [
-    [-1, 0, 1],
-    [-2, 0, 2],
-    [-1, 0, 1]
-    ]
-    edge_mat_nw = [
-    [0, 1, 2],
-    [-1, 0, 1],
-    [-2, -1, 0]
-    ]
-    edge_mat_w=[
-        [ 1,  2,  1],
-        [ 0,  0,  0],
-        [-1, -2, -1]
-    ]
-    edge_mat_sw=[
-        [ 2,  1,  0],
-        [ 1,  0,  -1],
-        [0, -1, -2]
-    ]'''
-    
-    #edge_mat_xs = [ 
-    #[1, -1],
-    #[-1, 1]
-    #]'''
-    #Prewitt
-    '''edge_mat_1 = [
-        [1, 0, -1],
-        [1, 0, -1],
-        [1, 0, -1]
-    ]
-    
-    edge_mat_2 = [
-        [ 1,  1,  1],
-        [ 0,  0,  0],
-        [-1, -1, -1]
-    ]'''
-    #sobel
-    '''edge_mat_1 = [
-    [1, 0, -1],
-    [2, 0, -2],
-    [1, 0, -1]
-    ]
-    
-    edge_mat_2 = [
-        [ 1,  2,  1],
-        [ 0,  0,  0],
-        [-1, -2, -1]
-    ]'''
 
-    border_bool = [[[False, False] for _ in range(g_img.shape[1])]
-               for _ in range(g_img.shape[0])]
+    #border_bool = [[[False, False] for _ in range(g_img.shape[1])]
+    #           for _ in range(g_img.shape[0])]
+    
+    raw_border_sprites_1 = np.zeros_like(g_img)
+    raw_border_sprites_2 = np.zeros_like(g_img)
     
     for i in range(img.shape[0]-len(edge_mat_1)-1):
         for j in range(img.shape[1]-len(edge_mat_1)-1):
@@ -287,19 +254,81 @@ def find_edges(img):
                 for jm in range (len(edge_mat_1[0])):
                     mat_1_sum += int(g_img[i + im][j + jm]) * edge_mat_1[im][jm]
                     mat_2_sum += int(g_img[i + im][j + jm]) * edge_mat_2[im][jm]
-            border_bool[i][j] = [((abs(mat_1_sum) > 128) and (abs(mat_2_sum) > 128)), (abs(mat_1_sum) > 128)]
+            raw_border_sprites_1[i][j] = to_8bit_safe(mat_1_sum)
+            raw_border_sprites_2[i][j] = to_8bit_safe(mat_2_sum)
     
-    return border_bool
+    tpt = cv2.getStructuringElement(cv2.MORPH_RECT,(2,2))
+    
+    #b_a = cv2.morphologyEx(raw_border_sprites_1, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)   
+    b_a = cv2.morphologyEx(raw_border_sprites_1, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)    
+    #b_a = raw_border_sprites_1 
+    b_b = cv2.morphologyEx(raw_border_sprites_2, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)     
+    #b_b = cv2.erode(b_b, kernel=tpt, iterations=1)  
+    mka = b_a[:,:] > 127
+    #print(mka.shape)
+    
+    mkb = b_b[:,:] > 127
+    #print(mkb.shape)
+    #border_bool = []
+    #border_bool.append(mka)
+    #border_bool.append(mkb)
+    #border_bool[:,:,1] =
+    
+    #border_bool = [mka, mkb]
+    
+    
+    return mka, mkb
+
+def get_raw_border_sprites(img, gray:bool):
+    if gray:
+        g_img = to_grayscale(img)
+    else:
+        g_img = to_black_n_white(img)
+    
+    edge_mat_1 = [
+    [ 0, -1, 0],
+    [-1, 4, -1],
+    [ 0, -1, 0]
+    ]
+
+    edge_mat_2 = [
+    [-1, -1, -1],
+    [-1,  8, -1],
+    [-1, -1, -1]
+    ]
+
+    raw_border_sprites_1 = np.zeros_like(g_img)
+    raw_border_sprites_2 = np.zeros_like(g_img)
+    
+    for i in range(img.shape[0]-len(edge_mat_1)-1):
+        for j in range(img.shape[1]-len(edge_mat_1)-1):
+            mat_1_sum = 0
+            mat_2_sum = 0
+            for im in range(len(edge_mat_1)):
+                for jm in range (len(edge_mat_1[0])):
+                    mat_1_sum += int(g_img[i + im][j + jm]) * edge_mat_1[im][jm]
+                    mat_2_sum += int(g_img[i + im][j + jm]) * edge_mat_2[im][jm]
+            raw_border_sprites_1[i][j] = to_8bit_safe(mat_1_sum)
+            raw_border_sprites_2[i][j] = to_8bit_safe(mat_2_sum)
+    
+    return  raw_border_sprites_1,  raw_border_sprites_2
 
 def get_border_sprites(arr):
-    n_img_a = np.zeros((len(arr), len(arr[0]), 4))
-    n_img_b = np.zeros((len(arr), len(arr[0]), 4))
+    print(f'arrrr:{len(arr[0])},{len(arr[1])}')
+    arr_a = np.array(arr[0])
+    arr_b = np.array(arr[1])
+    print('a',arr_a.shape)
+    print('b',arr_b.shape)
+    n_img_a = np.zeros((len(arr[0]), len(arr[1]), 4))
+    n_img_b = np.zeros((len(arr[0]), len(arr[1]), 4))
     
-    for i in range(len(arr)):
-        for j in range(len(arr[0])):
-            p_a = (255 * arr[i][j][0])
-            p_b = (255 * arr[i][j][1])
-
+    for i in range(len(arr[0])):
+        for j in range(len(arr[1])):
+            p_a = (255 * arr[0][i][j])
+            #print('a',arr[0][i][j])
+            p_b = (255 * arr[1][i][j])
+            #print('b',arr[1][i][j])
+            
             n_img_a[i][j] = [p_a, p_a, p_a, 255]
             n_img_b[i][j] = [p_b, p_b, p_b, 255]
             

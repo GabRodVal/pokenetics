@@ -89,7 +89,7 @@ class Fitness():
         sort_val = sorted(team, key=lambda x: x[1])
 
         for it in range(len(sort_val)):
-            cosnorm.append(half_pop + (math.cos(step*(it*2)) * half_pop))
+            cosnorm.append(half_pop + (math.cos(step*((it+1)*2)) * half_pop))
         
         indSort = [t[0] for t in sort_val]
         return list(zip(indSort, cosnorm))
@@ -105,7 +105,7 @@ class Fitness():
         sort_val = sorted(team, key=lambda x: x[1])
 
         for it in range(len(sort_val)):
-            sinnorm.append((math.sin(step*(it/2)) * self.pop_size))
+            sinnorm.append((math.sin(step*((it+1)/2)) * self.pop_size))
         
         indSort = [t[0] for t in sort_val]
         return list(zip(indSort, sinnorm))
@@ -113,14 +113,15 @@ class Fitness():
     def cos_progressive(self, team, peak):
         cosnorm = []
         
-        step = math.radians(360/self.pop_size)        
+        #step = math.radians(360/self.pop_size)
+        step = math.radians(360/len(team))             
         
         half_pop = self.pop_size/2
         
         sort_val = sorted(team, key=lambda x: x[1])
 
         for it in range(len(sort_val)):
-            cosnorm.append((((math.cos(step*(it*peak)) + 1) * half_pop)) * math.sqrt((step*it)/(2 * math.pi)) )
+            cosnorm.append((((math.cos(step*((it+1)*peak)) + 1.5) * half_pop)) * math.sqrt((step*(it+1))/(2 * math.pi)) )
         
         indSort = [t[0] for t in sort_val]
         return list(zip(indSort, cosnorm))
@@ -129,8 +130,8 @@ class Fitness():
     def cos_sin_log_progressive(self, team):
         sinnorm = []
         
-        step = math.radians(360/self.pop_size)
-        
+        #step = math.radians(360/self.pop_size)
+        step = math.radians(360/len(team))   
         #onfi_pop = self.pop_size/5
         #fofi_pop = onfi_pop * 4
         
@@ -138,7 +139,7 @@ class Fitness():
 
         for it in range(len(sort_val)):
             
-            sinh = math.sin(step*(it/2))
+            sinh = math.sin(step*((it+1)/2))
             cos_sinh_2pi = math.cos(sinh * (2 * math.pi))
             log10_xs9 = math.log10((max(it,1)/9))
             prog_base = cos_sinh_2pi + (log10_xs9 + 1)
@@ -228,7 +229,7 @@ class Fitness():
 
             match fit_choice[0][0]:
                 case 'cos_progressive':
-                    return self.cos_progressive(team, 4)
+                    return self.cos_progressive(team, randint(3,5))
                 case 'cos_sin_log_progressive':
                     return self.cos_sin_log_progressive(team)
                 case 'cos_double':
@@ -278,7 +279,7 @@ class Fitness():
         elif self.fitness_type == 'sin_half':
             pks = self.sinh2_norm(team)
         elif self.fitness_type == 'cos_progressive':
-            pks = self.cos_progressive(team, 4)
+            pks = self.cos_progressive(team, randint(3,5))
         elif self.fitness_type == 'cos_sin_log_progressive':
             pks = self.cos_sin_log_progressive(team)
         elif self.fitness_type == 'adaptable':
@@ -305,5 +306,22 @@ class Fitness():
         
         return [selected[0][0], selected[1][0]]
     
+    '''def selection_pop(self):
+        apt = [t[1] for t in self.fitness_list]
+
+        while True:
+            # Should return two values since this shit is only used for crossover
+            selected = choices(self.fitness_list, weights=apt, k=2)
+
+            if not(np.array_equal(selected[0][0], selected[1][0])):
+                break
+        
+        self.fitness_list.remove(selected[0])
+        self.fitness_list.remove(selected[1])
+        
+        return [selected[0][0], selected[1][0]]'''
+    
+    def get_fitness_list(self):
+        return self.fitness_list
     
     

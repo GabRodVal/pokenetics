@@ -5,8 +5,12 @@ from PIL import Image
 import math
 import json
 import cv2
+import colour
+
 
 debug = False
+MAX_DIST = math.dist([0,0,0],[255,255,255])
+MAX_DELTA_E_1994 = 255.0
 
 class Pokedex():
     def __init__(self, target_dex, score_type='RGBA', easy_shiny=False, generation='9', posterize=False):
@@ -21,6 +25,9 @@ class Pokedex():
                 poke_data.close()
         elif self.generation == '3':
             self.dim = (64, 64, 4)
+            with open('sprites\\g3\\poke_sprite_data.json') as poke_data:
+                pokeJSON = json.load(poke_data)
+                poke_data.close()
         elif self.generation  == '2':
             self.dim = (56, 56, 4)
             with open('sprites\\g2\\poke_sprite_data.json') as poke_data:
@@ -62,6 +69,7 @@ class Pokedex():
         print(score_type)
         
         self.target_border_matrix = utils.find_edges(target_image)
+        self.target_lab = utils.rgba_to_lab(target_image)
         self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, 0]
         self.target_mon[3] = self.aval_target(target_image, target_image)
         
@@ -150,8 +158,14 @@ class Pokedex():
             score = self.aval_target_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'border'.lower():
             score = self.aval_target_borders(ref_mon=ref_mon, acc_mon=acc_mon)
-        elif self.score_type == 'Mixed'.lower():
-            score = self.aval_target_mixed(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'Distance'.lower():
+            score = self.aval_target_distance(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'Delta_E_1994'.lower():
+            score = self.aval_target_delta_e_1994(ref_lab=self.target_lab, acc_mon=acc_mon)
+        elif self.score_type == 'Delta_E_1976'.lower():
+            score = self.aval_target_delta_e_1976(ref_lab=self.target_lab, acc_mon=acc_mon)
+        elif self.score_type == 'Delta_E_1994_mini'.lower():
+            score = self.aval_target_delta_e_1994_mini(ref_lab=self.target_lab, acc_mon=acc_mon)
         elif self.score_type == 'Semiperfect'.lower():
             score = self.aval_target_semi_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'Posterize'.lower():
@@ -164,8 +178,8 @@ class Pokedex():
             score = self.aval_target_semi_perfect_posterized_weighted(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'semiperfect_posterize_weighted_borders'.lower():
             score = self.aval_target_semi_perfect_posterized_weighted_borders(ref_mon=ref_mon, acc_mon=acc_mon)
-        elif self.score_type == 'weighted_perfect_borders_only_hard_posterize':
-            score = self.aval_target_weighted_perfect_only_borders_hard_posterized(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'weighted_perfect_borders_only_binposter':
+            score = self.aval_target_weighted_perfect_only_borders_binposter(ref_mon=ref_mon, acc_mon=acc_mon)
         if self.score_type == 'multiple'.lower():
             score = self.aval_multiple(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'harsh_perfect'.lower():
@@ -191,6 +205,55 @@ class Pokedex():
             
         return score
     
+    def aval_target_distance(self, ref_mon, acc_mon):
+        score = 0
+
+        for j in range(0, len(ref_mon)):
+            for k in range(0, len(ref_mon)):
+                if ref_mon[j][k][3] != acc_mon[j][k][3]:
+                    continue
+                elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
+                    #score += np.int32(255*4)
+                    score += MAX_DIST
+                else:
+                    score += (MAX_DIST - (math.dist(ref_mon[j][k][0:3],acc_mon[j][k][0:3])))
+            
+        return round(score)
+    
+    def aval_target_delta_e_1994(self, ref_lab, acc_mon):
+        score = 0
+
+        #ref_lab = utils.rgba_to_lab(ref_mon)
+        acc_lab = utils.rgba_to_lab(acc_mon)
+
+        for j in range(0, ref_lab.shape[0]):
+            for k in range(0, ref_lab.shape[1]):
+                score += (MAX_DELTA_E_1994 - abs(colour.delta_E(ref_lab[j][k], acc_lab[j][k], method="CIE 1994")))
+        
+        return round(score)
+    
+    def aval_target_delta_e_1976(self, ref_lab, acc_mon):
+        score = 0
+
+        #ref_lab = utils.rgba_to_lab(ref_mon)
+        acc_lab = utils.rgba_to_lab(acc_mon)
+
+        for j in range(0, ref_lab.shape[0]):
+            for k in range(0, ref_lab.shape[1]):
+                score += (MAX_DELTA_E_1994 - abs(colour.delta_E(ref_lab[j][k], acc_lab[j][k], method="CIE 1976")))
+        
+        return round(score)
+    
+    def aval_target_delta_e_1994_mini(self, ref_lab, acc_mon):
+        score = 0
+        ref_lab = utils.resize_by_factor(ref_lab, 0.5)
+        acc_lab = utils.rgba_to_lab(utils.resize_by_factor(acc_mon, 0.5))
+
+        for j in range(0, ref_lab.shape[0]):
+            for k in range(0, ref_lab.shape[1]):
+                score += (MAX_DELTA_E_1994 - abs(colour.delta_E(ref_lab[j][k], acc_lab[j][k], method="CIE 1994")))
+        
+        return round(score)
 
     def aval_target_grayscale(self, ref_mon, acc_mon):
         score = np.int32(0)
@@ -374,11 +437,11 @@ class Pokedex():
         
         return score
     
-    def aval_target_weighted_perfect_only_borders_hard_posterized(self, ref_mon, acc_mon):
+    def aval_target_weighted_perfect_only_borders_binposter(self, ref_mon, acc_mon):
         score = 0
         
-        ref_post = utils.posterize_hard(np.copy(ref_mon))
-        acc_post = utils.posterize_hard(np.copy(acc_mon))
+        ref_post = utils.posterize_binary(np.copy(ref_mon))
+        acc_post = utils.posterize_binary(np.copy(acc_mon))
         
         for j in range(0, len(acc_post)):
             for k in range(0, len(acc_post)):

@@ -18,6 +18,7 @@ def run_experiment(
                 ],
     regulate_type=['none'],
     elitism=[True],
+    elitism_interval=[0],
     fitness_type=['normalize'],
     elitism_mutation=[False],
     save_imgs=[False],
@@ -33,42 +34,44 @@ def run_experiment(
             for c in pop_size:
                 for d in max_gen:
                     for e in crossover_type:
-                        for f in regulate_type:
+                        for fi in regulate_type:
                             for g in elitism:
                                 for h in elitism_mutation:
                                     for i in save_imgs:
                                         for j in score_type:
                                             for k in fitness_type:
+                                                for e_i in elitism_interval:
                                                 
-                                                lab += 1
-                                                
-                                                #relat.write(f' FIT: [{k}] -------\n')
-                                                pg = PokeGenetics(
-                                                    target_dex=a,
-                                                    generation=b,
-                                                    pop_size=c,
-                                                    max_gen=d,
-                                                    auto_reg=(f != 'none'),
-                                                    fitness_type=k,
-                                                    regulate_type=f,
-                                                    reg_pop=True,
-                                                    elitism=g,
-                                                    pity=True,
-                                                    elitism_mutation=h,
-                                                    elitism_rate=0.12,
-                                                    score_type=j,
-                                                    crossover_type=e,
-                                                    save_all_imgs=i,
-                                                    serial_experiment=True,
-                                                    serial_label=lab
-                                                    )
-                                                
-                                                result = pg.run()
-                                                with open('pk_serial_experiments.csv', mode='a', newline='') as f:
-                                                    writer = csv.writer(f)
-                                                    #writer.writerow(result.keys())
-                                                    writer.writerow(result.values()) 
-                                                    f.close()
+                                                    lab += 1
+                                                    
+                                                    #relat.write(f' FIT: [{k}] -------\n')
+                                                    pg = PokeGenetics(
+                                                        target_dex=a,
+                                                        generation=b,
+                                                        pop_size=c,
+                                                        max_gen=d,
+                                                        auto_reg=(fi != 'none'),
+                                                        fitness_type=k,
+                                                        regulate_type=fi,
+                                                        reg_pop=False,
+                                                        elitism=g,
+                                                        elitism_interval=e_i,
+                                                        pity=False,
+                                                        elitism_mutation=h,
+                                                        elitism_rate=0.12,
+                                                        score_type=j,
+                                                        crossover_type=e,
+                                                        save_all_imgs=i,
+                                                        serial_experiment=True,
+                                                        serial_label=lab
+                                                        )
+                                                    
+                                                    result = pg.run()
+                                                    with open('pk_serial_experiments.csv', mode='a', newline='') as file:
+                                                        writer = csv.writer(file,csv.QUOTE_ALL)
+                                                        writer.writerow(result.keys())
+                                                        writer.writerow(result.values()) 
+                                                        file.close()
                                                 
 
                                                 
@@ -79,21 +82,18 @@ def run_experiment(
     
 
 def main():
-    run_experiment(target_dex=["244"],
-                   generations=['9'],
-                   pop_size=[24], #1000
+    run_experiment(target_dex=["382"],
+                   generations=['3'],
+                   pop_size=[32], #1000
                    #crossover_type=[['swap_binary']],
-                   #crossover_type=[['mix_essential', 'bisect','swap_colors','swap_channels', 'dark_n_light', 'contrast', 'mix_mini', 'swap_squared', 'mix_subtract','swap_chunks','difference']],
-                   crossover_type=[['swap_simple', 'swap_serial', 'mix_essential', 'bisect','swap_colors','swap_channels', 'dark_n_light', 'contrast', 'mix_mini', 'swap_squared', 'mix_subtract','swap_chunks','difference']],
-                   score_type=['RGBA','binposter', 'Grayscale','weighted_perfect_borders_only_hard_posterize'],
+                   crossover_type=[['swap_simple','swap_serial','bisect','swap_colors','swap_channels','mix_mini','swap_chunks','swap_even','swap_comp','swap_squares']],
+                   #crossover_type=[['swap_simple','swap_serial','mix_essential','bisect','multisect','swap_colors','swap_channels','swap_binary','dark_n_light','contrast','mix_mini','swap_squared','mix_subtract','checker_stack','swap_chunks','swap_even','difference','swap_comp','swap_squares']],
                    #score_type=['Grayscale', 'BW','weighted_perfect_borders_only_hard_posterize','multiple','harsh_perfect'],
-                   #score_type=['RGBA', 'Perfect', 'Semiperfect', 'Posterize', 'semiperfect_posterize'],
-                   #score_type=['semiperfect', 'posterize', 'semiperfect_posterize', 'semiperfect_posterize_weighted', 'semiperfect_posterize_weighted_borders'],
-                   #score_type=['semiperfect_posterize_weighted_borders'],
-                   #score_type=['weighted_perfect_borders_only_hard_posterize'],
+                   score_type=['Delta_E_1994_Mini','Delta_E_1976'],
                    #fitness_type=['adaptable_learner'],#cos_progressive
-                   fitness_type=['cos_progressive'],
+                   #fitness_type=['cos_progressive','normalize','cos_sin_log_progressive'],
                    elitism_mutation=[False],
+                   elitism_interval=[0],
                    regulate_type=['none'],
                    max_gen=[1000]) #1000
     
