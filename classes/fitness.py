@@ -61,26 +61,26 @@ class Fitness():
             },
         }'''
         
-        self.fitness_list = []
+        #self.fitness_list = []
 
     def set_no_progress_gen(self, val, gen):
         self.no_progress = val
         self.cur_gen = gen
 
     def normalization(self, team, min, max):
-        normalize = []
-        
+        #normalize = []
         #aval = zip(self.populacao, self.avaliacao)
         sort_val = sorted(team, key=lambda x: x[1])
-
         for it in range(len(sort_val)):
-            normalize.append(min + ((max-min)/(self.pop_size-1)) * it)
+            #normalize.append(min + ((max-min)/(self.pop_size-1)) * it)
+            sort_val[it][2] = (min + ((max-min)/(self.pop_size-1)) * it)
         
-        indSort = [t[0] for t in sort_val]
-        return list(zip(indSort, normalize))
+        #indSort = [t[0] for t in sort_val]
+        #return list(zip(sort_val[0],sort_val[1] normalize))
+        return sort_val
     
     def cos2x_norm(self, team):
-        cosnorm = []
+        #cosnorm = []
         
         step = math.radians(360/self.pop_size)
         
@@ -89,13 +89,15 @@ class Fitness():
         sort_val = sorted(team, key=lambda x: x[1])
 
         for it in range(len(sort_val)):
-            cosnorm.append(half_pop + (math.cos(step*((it+1)*2)) * half_pop))
+            #cosnorm.append(half_pop + (math.cos(step*((it+1)*2)) * half_pop))
+            sort_val[it][2] = (half_pop + (math.cos(step*((it+1)*2)) * half_pop))
         
-        indSort = [t[0] for t in sort_val]
-        return list(zip(indSort, cosnorm))
+        #indSort = [t[0] for t in sort_val]
+        #return list(zip(indSort, cosnorm))
+        return sort_val
     
     def sinh2_norm(self, team):
-        sinnorm = []
+        #sinnorm = []
         
         step = math.radians(360/self.pop_size)
         
@@ -105,13 +107,15 @@ class Fitness():
         sort_val = sorted(team, key=lambda x: x[1])
 
         for it in range(len(sort_val)):
-            sinnorm.append((math.sin(step*((it+1)/2)) * self.pop_size))
+            #sinnorm.append((math.sin(step*((it+1)/2)) * self.pop_size))
+            sort_val[it][2] = ((math.sin(step*((it+1)/2)) * self.pop_size))
         
-        indSort = [t[0] for t in sort_val]
-        return list(zip(indSort, sinnorm))
+        #indSort = [t[0] for t in sort_val]
+        #return list(zip(indSort, sinnorm))
+        return sort_val
     
     def cos_progressive(self, team, peak):
-        cosnorm = []
+        #cosnorm = []
         
         #step = math.radians(360/self.pop_size)
         step = math.radians(360/len(team))             
@@ -121,10 +125,12 @@ class Fitness():
         sort_val = sorted(team, key=lambda x: x[1])
 
         for it in range(len(sort_val)):
-            cosnorm.append((((math.cos(step*((it+1)*peak)) + 1.5) * half_pop)) * math.sqrt((step*(it+1))/(2 * math.pi)) )
+            #cosnorm.append((((math.cos(step*((it+1)*peak)) + 1.5) * half_pop)) * math.sqrt((step*(it+1))/(2 * math.pi)) )
+            sort_val[it][2] = ((((math.cos(step*((it+1)*peak)) + 1.5) * half_pop)) * math.sqrt((step*(it+1))/(2 * math.pi)) )
         
-        indSort = [t[0] for t in sort_val]
-        return list(zip(indSort, cosnorm))
+        #indSort = [t[0] for t in sort_val]
+        #return list(zip(indSort, cosnorm))
+        return sort_val
     
     
     def cos_sin_log_progressive(self, team):
@@ -145,10 +151,12 @@ class Fitness():
             prog_base = cos_sinh_2pi + (log10_xs9 + 1)
             fit_val =  prog_base * (self.pop_size/math.pi)
             
-            sinnorm.append(fit_val)
+            #sinnorm.append(fit_val)
+            sort_val[it][2] = (fit_val)
         
-        indSort = [t[0] for t in sort_val]
-        return list(zip(indSort, sinnorm))
+        #indSort = [t[0] for t in sort_val]
+        #return list(zip(indSort, sinnorm))
+        return sort_val
     
     def adaptable_sine(self, team):
         
@@ -251,13 +259,13 @@ class Fitness():
     def windowing(self, team):
         pks = []
         for pk in team:
-            pks.append([pk[0], max(pk[1] - min(team, key=lambda x: x[1])[1], 0.01)])
+            pks.append([pk[0],pk[1], max(pk[1] - min(team, key=lambda x: x[1])[1], 0.01)])
         return pks
 
     def just_score(self, team):
         pks = []
         for pk in team:
-            pks.append([pk[0], pk[1]])
+            pks.append([pk[0], pk[1], pk[1]])
         return pks
 
     # normalize to middle
@@ -267,7 +275,6 @@ class Fitness():
     # conferir o site la dos shaders para pensar nuns grafos de normalização criativa
 
     def get_team_fitness_score(self, team):
-        pks = []
         if self.fitness_type == 'score':
             pks = self.just_score(team)
         elif self.fitness_type == 'windowing':
@@ -290,10 +297,10 @@ class Fitness():
             print('fitness error')
             pks = team
 
-        self.fitness_list = pks
+        #self.fitness_list = pks
         return pks
         
-    def selection(self):
+    '''def selection(self):
         apt = [t[1] for t in self.fitness_list]
 
         while True:
@@ -304,7 +311,7 @@ class Fitness():
                 break
 
         
-        return [selected[0][0], selected[1][0]]
+        return [selected[0][0], selected[1][0]]'''
     
     '''def selection_pop(self):
         apt = [t[1] for t in self.fitness_list]
@@ -321,7 +328,7 @@ class Fitness():
         
         return [selected[0][0], selected[1][0]]'''
     
-    def get_fitness_list(self):
-        return self.fitness_list
+    #def get_fitness_list(self):
+    #    return self.fitness_list
     
     

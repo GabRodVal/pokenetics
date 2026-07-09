@@ -14,7 +14,7 @@ class Mutation():
 
     def mutate(self, pk_img):
         
-        mutation_type = randint(0, 30)
+        mutation_type = randint(0, 32)
         #print(f'Tipo de mutação:{mutation_type}')
         match mutation_type:
             case 0:
@@ -76,8 +76,13 @@ class Mutation():
                 pk_img = np.vstack((col, col))
             case 16:
                 pk_img = cv2.blur(pk_img,(3,3))
+                mk = pk_img[:,:, 3] > 0
+                pk_img[mk] = 255
             case 17:
-                pk_img = cv2.GaussianBlur(pk_img, (3,3),0)
+                gauss = cv2.GaussianBlur(pk_img, (3,3),0)
+                mk = gauss[:,:,3] > 0
+                gauss[mk,3] = 255
+                pk_img = gauss
             case 18:
                 pk_img = cv2.medianBlur(pk_img, 3)
             case 19:
@@ -117,11 +122,16 @@ class Mutation():
                 pk_img = cv2.filter2D(pk_img, -1, sharp_mask)
             case 28:
                 gauss = cv2.GaussianBlur(np.copy(pk_img), (3,3),0)
+                mk = gauss[:,:,3] > 0
                 pk_img = cv2.addWeighted(pk_img, 2.0, gauss, -1.0, 0)
+                pk_img[mk,3] = 255
             case 29:
                 pk_img = self.visible_mono(pk_img)
+            case 30:
+                pk_img = utils.bayer_dithering_RGB(pk_img)
+            case 31:
+                pk_img = utils.bayer_dithering_BY(pk_img)
             #laplacian
-
             case _:
                 upper_range = math.floor(pk_img.shape[0] * 0.75)
                 lower_range = math.floor(pk_img.shape[0] * 0.25)

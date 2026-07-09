@@ -1,6 +1,7 @@
 from pokegenetics import PokeGenetics
 import pandas as pd
 import csv
+from classes.crossover import CrossoverType
 
 def run_experiment(
     target_dex=['001'],
@@ -58,12 +59,16 @@ def run_experiment(
                                                         elitism_interval=e_i,
                                                         pity=False,
                                                         elitism_mutation=h,
-                                                        elitism_rate=0.12,
+                                                        crossover_rate=0.625,
+                                                        perseverance_rate=0.1875,
+                                                        mutation_rate=0.08,
+                                                        elitism_rate=0.03125,
                                                         score_type=j,
                                                         crossover_type=e,
                                                         save_all_imgs=i,
                                                         serial_experiment=True,
-                                                        serial_label=lab
+                                                        serial_label=lab,
+                                                        easy_shiny=True
                                                         )
                                                     
                                                     result = pg.run()
@@ -82,20 +87,23 @@ def run_experiment(
     
 
 def main():
-    run_experiment(target_dex=["382"],
-                   generations=['3'],
-                   pop_size=[32], #1000
+    run_experiment(target_dex=["243"],
+                   generations=['9'],
+                   pop_size=[512], #1000
                    #crossover_type=[['swap_binary']],
-                   crossover_type=[['swap_simple','swap_serial','bisect','swap_colors','swap_channels','mix_mini','swap_chunks','swap_even','swap_comp','swap_squares']],
+                   #crossover_type=[['swap_simple','swap_serial','bisect','swap_colors','swap_channels','mix_mini','swap_chunks','swap_even','swap_comp','swap_squares']],
                    #crossover_type=[['swap_simple','swap_serial','mix_essential','bisect','multisect','swap_colors','swap_channels','swap_binary','dark_n_light','contrast','mix_mini','swap_squared','mix_subtract','checker_stack','swap_chunks','swap_even','difference','swap_comp','swap_squares']],
+                   crossover_type=[['swap_borders']],#, CrossoverType.BLEND.value],
                    #score_type=['Grayscale', 'BW','weighted_perfect_borders_only_hard_posterize','multiple','harsh_perfect'],
-                   score_type=['Delta_E_1994_Mini','Delta_E_1976'],
+                   score_type=['RGborders_GBW'],#'Delta_E_2000'],#'Delta_E_Threshold','posterbin', 'Distance'],
                    #fitness_type=['adaptable_learner'],#cos_progressive
-                   #fitness_type=['cos_progressive','normalize','cos_sin_log_progressive'],
-                   elitism_mutation=[False],
+                   #fitness_type=['cos_progressive','normalize','cos_sin_log_progressive','adaptable_learner'],
+                   fitness_type=['cos_progressive'],
+                   elitism_mutation=[True],
                    elitism_interval=[0],
                    regulate_type=['none'],
-                   max_gen=[1000]) #1000
+                   max_gen=[20],
+                   save_imgs=[True])#_000]) #1000
     
 if __name__ == '__main__':
 

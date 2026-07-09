@@ -88,7 +88,9 @@ def rgba_to_lab(img):
     rgb_img[mk] = [255,255,255,255]
 
     tech_rgb = rgb_img[:,:, 0:3]
-    lab_img = cv2.cvtColor(tech_rgb,cv2.COLOR_RGB2LAB)
+    #tech_rgb = np.divide(tech_rgb,255.0)
+    lab_img = cv2.cvtColor(tech_rgb.astype(np.float32) / 255, cv2.COLOR_RGB2LAB)
+    #lab_img = lab_img//255.0
     
     return lab_img
 
@@ -173,19 +175,14 @@ def to_monochrome(img, rr:bool, gg:bool, bb:bool):
         new_img[mkr,0] = 0
     
     return new_img
-
-def array_remove_and_return(team, poke):
-    for i, item in enumerate(team):
-        if np.array_equal(item[0], poke[0]) and item[1] == poke[1]:
-            return team.pop(i)
         
-def remove_dupes(team):
+def format_team_pk_scr_fit(team):
 
     wk_team = team.copy()
     unq_team = []
     while len(wk_team) > 0:
         subject = wk_team.pop()
-        unq_team.append([subject.copy(), 0])
+        unq_team.append([subject.copy(), 0, 0])
         md_team = []
         if len(wk_team) > 0:
             for pk in wk_team:
@@ -199,7 +196,17 @@ def remove_dupes(team):
         
     
     return unq_team
+   
+def to_binary_string(pkm):
+    b_string = ''
     
+    for i in range(pkm.shape[0]):
+        for j in range(pkm.shape[1]):
+            for k in range(pkm.shape[2]):
+                b_string += bin(pkm[i][j][k]).replace("0b","").zfill(8)
+    
+    return b_string
+                
 def int_ratio(total, rel):
     res = rel/max(total, 0.0001)
             ####1..4..7..T
@@ -257,17 +264,19 @@ def find_edges(img):
             raw_border_sprites_1[i][j] = to_8bit_safe(mat_1_sum)
             raw_border_sprites_2[i][j] = to_8bit_safe(mat_2_sum)
     
-    tpt = cv2.getStructuringElement(cv2.MORPH_RECT,(2,2))
     
-    #b_a = cv2.morphologyEx(raw_border_sprites_1, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)   
-    b_a = cv2.morphologyEx(raw_border_sprites_1, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)    
-    #b_a = raw_border_sprites_1 
-    b_b = cv2.morphologyEx(raw_border_sprites_2, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)     
-    #b_b = cv2.erode(b_b, kernel=tpt, iterations=1)  
-    mka = b_a[:,:] > 127
+    '''if raw_border_sprites_1.shape[0] >= 80:
+        tpt = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
+        
+        #b_a = cv2.morphologyEx(raw_border_sprites_1, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)   
+        raw_border_sprites_1 = cv2.morphologyEx(raw_border_sprites_1, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)    
+        #b_a = raw_border_sprites_1 
+        raw_border_sprites_2 = cv2.morphologyEx(raw_border_sprites_2, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)     '''
+        #b_b = cv2.erode(b_b, kernel=tpt, iterations=1)  
+    mka = raw_border_sprites_1[:,:] > 127
     #print(mka.shape)
     
-    mkb = b_b[:,:] > 127
+    mkb = raw_border_sprites_2[:,:] > 127
     #print(mkb.shape)
     #border_bool = []
     #border_bool.append(mka)
@@ -408,13 +417,15 @@ def get_difference_sprite(ref_mon, acc_mon):
         for k in range(0, len(ref_mon)):
             if (ref_mon[j][k][3] == 255 and acc_mon[j][k][3] == 0) or (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 255):
                 diff_sprite[j][k] = [255,255,255,255]
-            elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
-                diff_sprite[j][k] = [0,0,0,255]
+            elif (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0) or (np.array_equal(ref_mon[j][k], acc_mon[j][k])):
+                diff_sprite[j][k] = [0,17,0,192]
             else:
                 for l in range (0, 3):
                     diff_sprite[j][k][l] = np.int32(abs(np.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
                 diff_sprite[j][k][3] = 255
-        
+    
+    
+    #mk = diff_sprite[:,:] == [0, 0, 0, 255]
     return diff_sprite
 
 def resize_by_factor(img_array, factor):
@@ -506,3 +517,43 @@ def get_color_dict(img, posterize:bool, skip_alpha=False):
                 each_color[hex_color] += 1
 
         return each_color
+    
+def bayer_dithering_RGB(img):
+    sm_img = resize_by_factor(img, 0.5)
+    bayer = np.zeros_like(sm_img)
+    
+    (bb,gg,rr,alpha) = cv2.split(sm_img)
+
+    bayer[1::2,0::2,2] = rr[1::2,0::2]
+    bayer[0::2,0::2,1] = gg[0::2,0::2] 
+    bayer[1::2,1::2,1] = gg[1::2,1::2] 
+    bayer[0::2,1::2,0] = bb[0::2,1::2]
+    
+    bayer[:,:,3] = alpha[:,:]
+    
+    bayer = resize_by_factor(bayer, 2)
+
+    return bayer
+
+def bayer_dithering_BY(img):
+    sm_img = resize_by_factor(img, 0.5)
+    bayer = np.zeros_like(sm_img)
+    
+    (bb,gg,rr,alpha) = cv2.split(sm_img)
+
+    yy = np.uint8(np.divide(np.add(np.int16(rr),np.int16(gg)), 2))
+    
+    bayer[1::2,0::2,0] = bb[1::2,0::2]
+    
+    bayer[0::2,0::2,1] = yy[0::2,0::2]
+    bayer[0::2,0::2,2] = yy[0::2,0::2]
+    bayer[1::2,1::2,1] = yy[1::2,1::2]
+    bayer[1::2,1::2,2] = yy[1::2,1::2]
+
+    bayer[0::2,1::2,0] = bb[0::2,1::2]
+    
+    bayer[:,:,3] = alpha[:,:]
+    
+    bayer = resize_by_factor(bayer, 2)
+
+    return bayer

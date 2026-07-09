@@ -21,49 +21,7 @@ seed(25696969)
 
 # Add easy shiny
 # Add Visual Crossover
-class CrossoverType(Enum):
-    #   Métodos de Crossover
-    ##  Mix - Métodos que mesclam pixels
-    ### Mescla pixels com alfa > 0, se não, troca pelo pixel visivel
-    MIX_ESSENTIAL = 'mix_essential'
-    ### Mescla todos os pixels
-    MIX_FULL = 'mix_full'
-    ### Mescla as cores
-    MIX_COLOR = 'mix_color'
-    ### Mescla pixels de acordo com o pokemon alvo
-    MIX_SMART = 'mix_smart'
-    ### Pra cada crossover, seleciona um metodo Mix aleatorio.
-    MIX_ALL = 'mix_all'
-    ##  Swap - Métodos que trocam pixels
-    ### Parte ambos os pokemon ao meio e junta as partes diferentes
-    SWAP_BISECT = 'bisect'
-    ### Converte em binário e troca os bits
-    SWAP_BINARY = 'binary'
-    ### Troca pixels aleatoriamente
-    SWAP_SIMPLE = 'swap_simple'
-    ### Troca um pixel sim, um pixel não
-    SWAP_EVEN = 'swap_even'
-    ### Troca pixels de acordo com o pokemon alvoAdd commentMore actions
-    SWAP_CHEATING = 'swap_cheater_rgba'
-    ### Troca varios pixels em sequencia
-    SWAP_SERIAL = 'swap_serial'
-    ### Pra cada crossover, seleciona um metodo Swap aleatorio.
-    SWAP_SMART = 'swap_smart'
-    ### Pra cada crossover, seleciona um metodo Mix aleatorio, exceto swap_cheater_rgba
-    SWAP_DUMB = 'swap_dumb'
-    ### Troca as cores dos pokemon
-    SWAP_COLOR = 'swap_colors'
-    ## Extras
-    ### Pra cada crossover, seleciona um metodo aleatorio, com exceção de swap_cheater_rgba e mix_smart
-    CHAOTIC = 'chaotic_dumb'
-    ### Seleciona entre swap_cheater_rgba e mix_smart
-    SMART = 'smart_only'
-    ### Pra cada crossover, seleciona um metodo aleatorio.
-    ALL_IN = 'chaotic_smart'
-    ### Usa os métodos relacionados a cores.
-    COLORFUL = 'color_all'
-    ### Pra cada crossover, seleciona entre uma lista customizada de métodos para realizar.
-    CUSTOM = 'custom'
+
 
 # Botar essa porra num arduino e fazer um bot de bluesky
 # Seriously my dude, cut out with the loops
@@ -76,6 +34,7 @@ class PokeGenetics():
             pop_size=40,
             mutation_rate=0.08,
             crossover_rate=0.64,
+            perseverance_rate=0.12,
             max_gen=100,
             score_type='RGBA',
             auto_reg=False,
@@ -96,7 +55,7 @@ class PokeGenetics():
                 ],
             fitness_type='normalize',
             regulate_type='none',
-            elitism_rate=0.12,
+            elitism_rate=0.01,
             easy_shiny=False,
             posterize=False,
             verbose=True,
@@ -113,6 +72,7 @@ class PokeGenetics():
             crossover_rate=crossover_rate,
             crossover_type=crossover_type,
             mutation_rate=mutation_rate,
+            perseverance_rate=perseverance_rate,
             elitism=elitism,
             pity=pity,
             elitism_rate=elitism_rate,
@@ -165,6 +125,7 @@ class PokeGenetics():
         self.pop_size = pop_size
         self.mutation_rate = mutation_rate
         self.crossover_rate = crossover_rate
+        self.perseverance_rate = perseverance_rate
         self.max_gen = max_gen
         self.elitism = elitism
         self.pity = pity
@@ -213,7 +174,7 @@ class PokeGenetics():
             
         stats = self.party.get_stats()
 
-        if self.cur_score <= self.old_score and self.cur_score <= best_mon[1]:
+        if self.cur_score <= self.old_score or (self.cur_gen > 1 and self.cur_score <= best_mon[1]):
             self.no_change_turns += 1
             self.no_change_total += 1
             if self.no_change_turns > self.no_change_max:
@@ -239,7 +200,7 @@ class PokeGenetics():
         t_score = self.party.get_true_score(most_fit_mon[0])
         
         if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - Pontuação Verdadeira: {(t_score/(255 * 3 * (target_mon[2].shape[0]) * (target_mon[2].shape[1]))) * 100:.2f}% ({t_score}pts)')
-        if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - CoR: {stats[1] * 100:.2f}% | Mut: {stats[2] * 100:.2f}% | Elt: {stats[3] * 100:.2f}% | Pop: {stats[0]}')
+        if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - CoR: {stats[1] * 100:.2f}%/{self.crossover_rate} | Mut: {stats[2] * 100:.2f}%/{self.mutation_rate}% | Elt: {stats[3] * 100:.2f}%/{self.elitism_rate}% | Pop: {stats[0]}/{self.pop_size}')
         if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - Rodadas sem progresso: {self.no_change_turns} (Max. {self.no_change_max}) | Tot. {self.no_change_total}\033[0m')
 
         self.h_scores.append(((self.cur_score/target_mon[3]) * 100))
@@ -304,10 +265,11 @@ class PokeGenetics():
     def hall_of_fame(self):
         top_gif = []
         GOAT_mon = self.party.get_GOAT_pokemon()
-        target = self.party.get_target_pokemon()
-        imio.imwrite(f'{self.base_dir}/DIY_{target[1]}.png', GOAT_mon[0])
-        self.top_league.append(GOAT_mon)
         size_fac = math.floor(512/GOAT_mon[0].shape[0])
+        target = self.party.get_target_pokemon()
+        imio.imwrite(f'{self.base_dir}/DIY_{target[1]}.png', utils.resize_by_factor(GOAT_mon[0],size_fac))
+        self.top_league.append(GOAT_mon)
+        
         for iter in range(len(self.top_league)):
         #    imio.imwrite(f'{self.base_dir}/best/{iter+1}_s{self.top_league[iter][1]}.png', self.top_league[iter][0])
 
@@ -322,7 +284,7 @@ class PokeGenetics():
             champ_img = Image.fromarray(champ_img).convert("RGB")
 
             if iter == 0 or iter == (len(self.top_league)-1):
-                for _ in itertools.repeat(None, max(min(20, math.ceil(len(self.top_league)/10)), 40)):
+                for _ in itertools.repeat(None, max(min(10, math.ceil(len(self.top_league)/10)), 20)):
                     top_gif.append(champ_img)
             else:
                 top_gif.append(champ_img)
@@ -334,7 +296,7 @@ class PokeGenetics():
     # Add a post 99 graph, and maybe something else with it by side (total points per gen?)
     def plot_progress(self):
         target_mon = self.party.get_target_pokemon()
-        fitness_list = self.party.get_fitness_list()
+        #fitness_list = self.party.get_fitness_list()
         
         plt.figure(figsize=(24, 18))
         
@@ -390,7 +352,7 @@ class PokeGenetics():
 
         fit_fig.set_title(f"{self.fitness_type.capitalize()}")
         fit_fig.grid()
-        fit_fig.plot(fitness_list, "#9c0d54", label='max_fitness', linewidth=0.8)
+        #fit_fig.plot(fitness_list, "#9c0d54", label='max_fitness', linewidth=0.8)
 
         mut_fig.set_title(f"Mutation Rate - Avg {mean(self.mut_values):.2f}%")
         mut_fig.grid()
@@ -444,6 +406,8 @@ class PokeGenetics():
             #'crossover': f'{self.crossover_rate}|avg {mean(self.cross_values):.4f}\n        {self.crossover_type}',
             'original_mutation_rate':self.mutation_rate,
             'average_mutation_rate': mean(self.mut_values),
+            #
+            'perseverance_rate': self.perseverance_rate,
             #'mutation': f'{self.mutation_rate} | avg {mean(self.mut_values):.4f}',
             'elitism': self.elitism,
             'elitism_mutation': self.elitism_mutation,
@@ -526,14 +490,10 @@ class PokeGenetics():
             if debug:print('Break loop: OK')
             
             self.party.apply_fitness()
-            if debug:print('Fitness: OK')
             self.party.populate_new_gen()
-            if debug:print('Genpop: OK')
             self.party.score_party()
-            if debug:print('Score: OK')
             self.cur_gen = self.party.get_cur_gen()
             self.register_stats()
-            if debug:print('Reg Stats: OK')
             
 
             

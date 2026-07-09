@@ -17,7 +17,7 @@ class Crossover():
         self.crossover_type = crossover_type
         self.target_mon = target_mon
 
-    class CrossoverType(Enum):
+    '''class CrossoverType(Enum):
         #   Métodos de Crossover
         ##  Mix - Métodos que mesclam pixels
         ### Mescla pixels com alfa > 0, se não, troca pelo pixel visivel
@@ -57,7 +57,7 @@ class Crossover():
         ### Pra cada crossover, seleciona um metodo aleatorio.
         ALL_IN = ['bisect', 'swap_simple', 'swap_even', 'swap_cheater_rgba', 'swap_serial', 'swap_colors', 'mix_essential']
         ### Usa os métodos relacionados a cores.
-        COLORFUL = ['swap_colors']
+        COLORFUL = ['swap_colors']'''
 
     
     #botar a porra toda pra parir gemeos
@@ -453,6 +453,29 @@ class Crossover():
 
         return child_a, child_b
     
+    def crossover_swap_borders(self, img_a, img_b):
+        child_a = np.copy(img_a)
+        child_b = np.copy(img_b)
+        
+        edge_a1, edge_a2 = utils.find_edges(img_a)
+        edge_b1, edge_b2 = utils.find_edges(img_b)
+        
+        if randint(0,1):
+            for i in range (img_b.shape[0]):
+                for j in range(img_b.shape[1]):
+                    if edge_a1[i][j]:
+                        child_b[i][j] = img_a[i][j].copy()
+                    if edge_b1[i][j]:
+                        child_a[i][j] = img_b[i][j].copy()
+        else:
+            for i in range (img_b.shape[0]):
+                for j in range(img_b.shape[1]):
+                    if edge_a2[i][j]:
+                        child_b[i][j] = img_a[i][j].copy()
+                    if edge_b2[i][j]:
+                        child_a[i][j] = img_b[i][j].copy()
+        
+        return child_a, child_b
     # crossover_subtract
 
     #def mix crossover_mix_colors(self, img_a, img_b):
@@ -630,6 +653,21 @@ class Crossover():
         
         return child_a, child_b
     
+    def crossover_mix_fit(self, img_a, img_b):
+        child_a = utils.fit_img(np.copy(img_a))
+        child_b = utils.fit_img(np.copy(img_b))
+        
+        ch = randint(0,2)
+        match ch:
+            case 0:
+                c_a, c_b = self.crossover_mix_opacity_essential(child_a, child_b)
+            case 1:
+                c_a, c_b = self.crossover_mix_opacity_minimize(child_a, child_b)
+            case 2:
+                c_a, c_b = self.crossover_mix_subtract(child_a, child_b)
+        
+        return c_a, c_b
+    
     def crossover_mix_inbreeding(self, img_a, img_b):
         child_x = np.zeros_like(img_a)
                 
@@ -722,6 +760,8 @@ class Crossover():
                 c_a, c_b = self.crossover_swap_colors(img_a, img_b)
             case 'swap_channels':
                 c_a, c_b = self.crossover_swap_channels(img_a, img_b)
+            case 'swap_borders':
+                c_a, c_b = self.crossover_swap_borders(img_a, img_b)
             case 'swap_binary':
                 c_a, c_b = self.crossover_swap_binary(img_a, img_b)
             case 'dark_n_light':
@@ -742,6 +782,8 @@ class Crossover():
                 c_a, c_b = self.crossover_swap_comp(img_a, img_b)
             case 'swap_squares':
                 c_a, c_b = self.crossover_swap_squares(img_a, img_b)
+            case 'mix_fit':
+                c_a, c_b = self.crossover_mix_fit(img_a, img_b)
             case 'no_cross':
                 c_a = img_a.copy()
                 c_b = img_b.copy()
@@ -753,3 +795,37 @@ class Crossover():
 
 
         return c_a, c_b
+
+
+
+
+
+class CrossoverType(Enum):
+    #   Métodos de Crossover
+    ##  Mix - Métodos que mesclam pixels
+    SWAP = ['swap_simple', 'swap_serial', 'swap_chunks', 'swap_squares', 'swap_comp', 'swap_even','swap_colors','swap_binary', 'bisect', 'multisect', 'swap_channels','swap_borders']
+    
+    SWAP_PIXEL = ['swap_simple', 'swap_serial', 'swap_chunks', 'swap_squares', 'swap_comp', 'swap_even', 'bisect', 'multisect','swap_borders']
+    
+    SECTION = ['bisect', 'multisect', 'swap_chunks', 'swap_comp']
+    
+    BLEND = ['swap_squared', 'mix_essential', 'mix_mini', 'mix_subtract', 'swap_binary', 'mix_fit']
+
+    BINARY = ['swap_binary']
+    
+    COLORS = ['swap_colors']
+    
+    #ADD SWAP BORDERS
+    
+    CHANNELS = ['swap_channels']
+    
+    SELECTIVE = ['dark_n_light', 'contrast','swap_borders']
+    
+    UNUSUAL = ['multisect', 'swap_colors', 'swap_channels', 'swap_binary', 'checker_stack', 'difference','swap_borders']
+    
+    NONE = ['no_cross']
+    
+    CHEAT = ['swap_cheater_rgba']
+    
+    ALL = ['swap_simple','swap_serial','mix_essential','bisect','multisect','swap_colors','swap_channels','swap_binary','dark_n_light','contrast','mix_mini','swap_squared','mix_subtract','checker_stack','swap_chunks','swap_even','difference','swap_comp','swap_squares', 'mix_fit','swap_borders']
+    
