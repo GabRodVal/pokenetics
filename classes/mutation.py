@@ -14,7 +14,7 @@ class Mutation():
 
     def mutate(self, pk_img):
         
-        mutation_type = randint(0, 32)
+        mutation_type = randint(0, 36)
         #print(f'Tipo de mutação:{mutation_type}')
         match mutation_type:
             case 0:
@@ -131,6 +131,8 @@ class Mutation():
                 pk_img = utils.bayer_dithering_RGB(pk_img)
             case 31:
                 pk_img = utils.bayer_dithering_BY(pk_img)
+            case 32:
+                pk_img = cv2.bitwise_not(pk_img)
             #laplacian
             case _:
                 upper_range = math.floor(pk_img.shape[0] * 0.75)

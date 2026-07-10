@@ -665,8 +665,15 @@ class Crossover():
                 c_a, c_b = self.crossover_mix_opacity_minimize(child_a, child_b)
             case 2:
                 c_a, c_b = self.crossover_mix_subtract(child_a, child_b)
-        
+            case 3:
+                c_a, c_b = self.crossover_mix_bitwise(child_a, child_b)
         return c_a, c_b
+    
+    def crossover_mix_bitwise(self, img_a, img_b):
+        child_a = cv2.bitwise_and(np.copy(img_a), np.copy(img_b))
+        child_b = cv2.bitwise_or(np.copy(img_a), np.copy(img_b))
+        
+        return child_a, child_b
     
     def crossover_mix_inbreeding(self, img_a, img_b):
         child_x = np.zeros_like(img_a)
@@ -776,6 +783,8 @@ class Crossover():
                 c_a, c_b = self.crossover_swap_squared(img_a, img_b)
             case 'mix_subtract':
                 c_a, c_b = self.crossover_mix_subtract(img_a, img_b)
+            case 'bitwise':
+                c_a, c_b = self.crossover_mix_bitwise(img_a, img_b)
             case 'difference':
                 c_a, c_b = self.crossover_difference(img_a, img_b)
             case 'swap_comp':
@@ -807,9 +816,9 @@ class CrossoverType(Enum):
     
     SWAP_PIXEL = ['swap_simple', 'swap_serial', 'swap_chunks', 'swap_squares', 'swap_comp', 'swap_even', 'bisect', 'multisect','swap_borders']
     
-    SECTION = ['bisect', 'multisect', 'swap_chunks', 'swap_comp']
+    SECTION = ['bisect', 'multisect', 'swap_chunks', 'swap_comp','swap_even','swap_borders']
     
-    BLEND = ['swap_squared', 'mix_essential', 'mix_mini', 'mix_subtract', 'swap_binary', 'mix_fit']
+    BLEND = ['swap_squared', 'mix_essential', 'mix_mini', 'mix_subtract', 'swap_binary', 'mix_fit', 'bitwise']
 
     BINARY = ['swap_binary']
     
@@ -827,5 +836,5 @@ class CrossoverType(Enum):
     
     CHEAT = ['swap_cheater_rgba']
     
-    ALL = ['swap_simple','swap_serial','mix_essential','bisect','multisect','swap_colors','swap_channels','swap_binary','dark_n_light','contrast','mix_mini','swap_squared','mix_subtract','checker_stack','swap_chunks','swap_even','difference','swap_comp','swap_squares', 'mix_fit','swap_borders']
+    ALL = ['swap_simple','swap_serial','mix_essential','bisect','multisect','swap_colors','swap_channels','swap_binary','dark_n_light','contrast','mix_mini','swap_squared','mix_subtract','checker_stack','swap_chunks','swap_even','difference','swap_comp','swap_squares', 'mix_fit','swap_borders', 'bitwise']
     

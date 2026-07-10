@@ -16,32 +16,32 @@ class Fitness():
         self.last_used = 'none'
         self.adaptable_smart_stats = {
             "cos_progressive": {
-                "success_num": 1,
-                "total_num": 1,
+                "success_num": 10,
+                "total_num": 10,
             },
             "cos_sin_log_progressive": {
-                "success_num": 1,
-                "total_num": 1,
+                "success_num": 10,
+                "total_num": 10,
             },
             "cos_double": {
-                "success_num": 1,
-                "total_num": 1,
+                "success_num": 10,
+                "total_num": 10,
             },
             "sin_half": {
-                "success_num": 1,
-                "total_num": 1,
+                "success_num": 10,
+                "total_num": 10,
             },
             "normalize": {
-                "success_num": 1,
-                "total_num": 1,
+                "success_num": 10,
+                "total_num": 10,
             },
             "windowing": {
-                "success_num": 1,
-                "total_num": 1,
+                "success_num": 10,
+                "total_num": 10,
             },
             "score": {
-                "success_num": 1,
-                "total_num": 1,
+                "success_num": 10,
+                "total_num": 10,
             },
             }
         
@@ -221,18 +221,21 @@ class Fitness():
             
             #if self.cur_gen % 100 == 0:
             #    print(f'Dict:\n{self.adaptable_smart_stats}\n\nCur pool:\n{pool}\n')
-            #    relat = open(f'adapt_rates.txt', 'a') 
+                #relat = open(f'adapt_rates.txt', 'a') 
             #    relat.write(f'--- POOL ---\n')   
             #    relat.write(str(pool))
             #    relat.write('\n\n')
             #    relat.close()
             
-            
-            #print(f'da CHOICE:{fit_choice} <-----')
-            #print(f'pooool:{pool}...END\n\n')
-            #print(fit_choice[0])
-            #print(fit_choice[0][0])
-            #relat = open(f'adapt.txt', 'w')    
+            if self.cur_gen % 100 == 0:
+                print('\n')
+                for p in pool:
+                    print(f'[{p[0]}] - {self.adaptable_smart_stats[p[0]]['total_num']} usos | {self.adaptable_smart_stats[p[0]]['success_num']} sucessos | Peso:{p[1]}')
+                #print(f'pooool:{pool}...END\n\n')
+                print('\n')
+                #print(fit_choice[0])
+                #print(fit_choice[0][0])
+                #relat = open(f'adapt.txt', 'w')    
 
 
             match fit_choice[0][0]:

@@ -14,10 +14,10 @@ MAX_DIST = math.dist([0,0,0],[255,255,255])
 MAX_DELTA_E_1994 = 255.0
 MAX_DELTA_E_255 = 121.5351
 MAX_DELTA_E_2000 = 121.5351#1.8655#?
-MAX_RGB_COLOUR_DIST = 764.834
+MAX_RGB_COLOUR_DIST = 764.9
 
 class Pokedex():
-    def __init__(self, target_dex, score_type='RGBA', easy_shiny=False, generation='9', posterize=False):
+    def __init__(self, target_dex, score_type='RGBA', easy_shiny=False, generation='9', posterize=False,posterize_hard=False):
         
         self.generation = generation
         if score_type == 'Delta_E_2000'.lower():
@@ -66,6 +66,7 @@ class Pokedex():
         #self.pokedex_keys = self.pokedex.keys()
         self.easy_shiny = easy_shiny
         self.posterize_all = posterize
+        self.posterize_hard_all = posterize_hard
 
         self.aval_number = 0
         
@@ -74,8 +75,10 @@ class Pokedex():
         self.score_type = score_type
         print(score_type)
         
-        self.target_border_matrix = utils.find_edges(target_image)
-        self.target_lab = utils.rgba_to_lab(target_image)
+        self.target_border_matrix = utils.find_edges(np.copy(target_image))
+        self.target_lab = utils.rgba_to_lab(np.copy(target_image))
+        self.target_gray = utils.to_grayscale(np.copy(target_image))
+        self.target_BW = utils.to_black_n_white(np.copy(target_image))
         self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, 0]
         self.target_mon[3] = self.aval_target(target_image, target_image)
         
@@ -113,11 +116,14 @@ class Pokedex():
             img_arch = cv2.resize(img_arch, (self.dim[0], self.dim[0]))
         
         ######
-        if self.posterize_all:
+        if self.posterize_hard_all:
+            img_arch = utils.posterize_hard(img_arch)
+        elif self.posterize_all:
             img_arch = utils.posterize(img_arch)
+        
         mini_sprites = False
         if mini_sprites:
-            img_arch = utils.resize_by_factor(img_arch, 0.5)    
+            img_arch = utils.resize_by_factor(img_arch, 0.5)
         
         return img_arch
     
@@ -165,9 +171,9 @@ class Pokedex():
         if self.score_type == 'RGBA'.lower():
             score = self.aval_target_standard(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'Grayscale'.lower():
-            score = self.aval_target_grayscale(ref_mon=ref_mon, acc_mon=acc_mon)
+            score = self.aval_target_grayscale(ref_mon=self.target_gray, acc_mon=acc_mon)
         elif self.score_type == 'BW'.lower():
-            score = self.aval_target_binary(ref_mon=ref_mon, acc_mon=acc_mon)
+            score = self.aval_target_binary(ref_mon=self.target_BW, acc_mon=acc_mon)
         elif self.score_type == 'Perfect'.lower():
             score = self.aval_target_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'border'.lower():
@@ -186,6 +192,8 @@ class Pokedex():
         #    score = self.aval_target_delta_e_1994_mini(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'rgb_colour_distance'.lower():
             score = self.aval_target_RGB_colour_distance(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'NA-rgb_colour_distance'.lower():
+            score = self.aval_target_RGB_colour_distance_ignore_alpha(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'Semiperfect'.lower():
             score = self.aval_target_semi_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'Posterize'.lower():
@@ -274,6 +282,26 @@ class Pokedex():
                     clr_dist = math.sqrt((((512 + r_mean)* rd * rd)/256) + 4*gd*gd + (((767 - r_mean)*bd*bd)/256))
                     score += (MAX_RGB_COLOUR_DIST - abs(clr_dist))
         return score
+    
+    def aval_target_RGB_colour_distance_ignore_alpha(self, ref_mon, acc_mon):
+        score = 0.0
+
+        for j in range(0, len(ref_mon)):
+            for k in range(0, len(ref_mon)):
+                if ref_mon[j][k][3]  < 255 or acc_mon[j][k][3] < 255:
+                    continue
+                else:
+                    ed1 = np.float32(ref_mon[j][k])
+                    ed2 = np.float32(acc_mon[j][k])
+                    
+                    r_mean = (ed1[0] + ed2[0] )/2
+                    rd = ed1[0] - ed2[0]
+                    gd = ed1[1] - ed2[1]
+                    bd = ed1[2] - ed2[2]
+                
+                    clr_dist = math.sqrt((((512 + r_mean)* rd * rd)/256) + 4*gd*gd + (((767 - r_mean)*bd*bd)/256))
+                    score += (MAX_RGB_COLOUR_DIST - abs(clr_dist))
+        return score
 
     
     def aval_target_delta_e_2000(self, ref_mon, acc_mon):
@@ -318,7 +346,7 @@ class Pokedex():
                     continue
                 else:
                 #### cd = self.delta_e_map.access(ref_mon[j][k][0:3],acc_mon[j][k][0:3])
-                    e_diff = self.delta_e_map.access(ref_mon[j][k][0:3],acc_mon[j][k][0:3])
+                    e_diff = abs(self.delta_e_map.access(ref_mon[j][k][0:3],acc_mon[j][k][0:3]))
                     if e_diff <= 0.5:
                         score += 2
                     elif e_diff < 1.0:
@@ -563,8 +591,6 @@ class Pokedex():
                         score += 2
                 elif self.target_border_matrix[1][j][k] == b_b[j][k]:
                     score += 1
-                else:
-                    score -=1
                     
         return score
     
@@ -573,7 +599,7 @@ class Pokedex():
         scr_color = self.aval_target_RGB_colour_distance(ref_mon=ref_mon,acc_mon=acc_mon)
         
         scr_border_weighted = (MAX_RGB_COLOUR_DIST/2) * scr_border
-        score = round(scr_border_weighted + scr_color)
+        score = (scr_border_weighted + scr_color)
         
         return score
     
@@ -582,11 +608,14 @@ class Pokedex():
         scr_color = self.aval_target_RGB_colour_distance(ref_mon=ref_mon,acc_mon=acc_mon)
         scr_gray = self.aval_target_grayscale(ref_mon=ref_mon,acc_mon=acc_mon)
         scr_bw = self.aval_target_binary(ref_mon=ref_mon,acc_mon=acc_mon)
+        scr_perfect = self.aval_target_perfect(ref_mon=ref_mon,acc_mon=acc_mon)
         
         scr_border_weighted = (MAX_RGB_COLOUR_DIST/2) * scr_border
         scr_bw_weighted = (MAX_RGB_COLOUR_DIST) * scr_bw
         scr_gray_weighted = scr_gray * 3
-        score = round(scr_color + ((scr_border_weighted + (scr_bw_weighted + scr_gray_weighted)/2)/2))
+        scr_perfect_weighted = (MAX_RGB_COLOUR_DIST) * scr_perfect
+        
+        score = math.sqrt((scr_color + scr_border_weighted + ((scr_bw_weighted + scr_gray_weighted + scr_perfect_weighted)/3))/3)
         
         return score
         

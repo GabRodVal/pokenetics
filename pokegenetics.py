@@ -58,6 +58,7 @@ class PokeGenetics():
             elitism_rate=0.01,
             easy_shiny=False,
             posterize=False,
+            posterize_hard=False,
             verbose=True,
             save_all_imgs=True,
             serial_experiment=False,
@@ -86,13 +87,18 @@ class PokeGenetics():
             regulate_type=regulate_type,
             fitness_type=fitness_type,
             save_all_imgs=save_all_imgs,
-            posterize=posterize
+            posterize=posterize,
+            posterize_hard=posterize_hard
             )
 
         # Auto Reg
         self.regulate_type=regulate_type
         self.auto_regulate = auto_reg
         self.reg_pop = reg_pop
+        
+        #
+        self.posterize = posterize
+        self.posterize_hard = posterize_hard
         
         # Generation
         self.generation = generation
@@ -224,34 +230,47 @@ class PokeGenetics():
 
 
         
-        if len(self.top_league) < 1 or abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3]/1200):
+        if len(self.top_league) < 1 or abs(most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3]/2000):
             factor = math.ceil(256/most_fit_mon[0].shape[0])
 
             self.top_league.append(most_fit_mon)
-            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}g_{(most_fit_mon[1]/target_mon[3])*100:.2f}.png', utils.resize_by_factor(most_fit_mon[0], factor)) 
+            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}g_{(most_fit_mon[1]/target_mon[3])*100:.2f}.png', utils.resize_by_factor(most_fit_mon[0], factor))
+            most_fit_t_sim = utils.get_similarity_sprite(target_mon[2],most_fit_mon[0])
+            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_sim.png', utils.resize_by_factor(most_fit_t_sim, factor))
 
             
             if self.score_type != 'Grayscale'.lower() and self.score_type != 'BW'.lower():
                 most_fit_difference = utils.get_difference_sprite(target_mon[2],most_fit_mon[0])
                 imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_diff.png', utils.resize_by_factor(most_fit_difference, factor))
             
-            elif self.score_type == 'Grayscale'.lower():
+            elif self.score_type == 'Grayscale'.lower() or self.score_type=='RGBorders_GBW'.lower():
                 most_fit_gray = utils.to_grayscale(np.copy(most_fit_mon[0]))
                 imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_gray.png', utils.resize_by_factor(most_fit_gray, factor))
                 most_fit_difference = utils.get_difference_sprite(utils.to_rgba(utils.to_grayscale(np.copy(target_mon[2]))), utils.to_rgba(most_fit_gray))
                 imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_graydiff.png', utils.resize_by_factor(most_fit_difference, factor))
             
-            elif self.score_type == 'BW'.lower():
+            elif self.score_type == 'BW'.lower() or self.score_type=='RGBorders_GBW'.lower() or self.score_type=='Mixed'.lower():
                 most_fit_bw = utils.to_black_n_white(np.copy(most_fit_mon[0]))
                 imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_bw.png', utils.resize_by_factor(most_fit_bw, factor))
                 most_fit_difference = utils.get_difference_sprite(utils.to_rgba(utils.to_black_n_white(np.copy(target_mon[2]))), utils.to_rgba(most_fit_bw))
                 imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_bwdiff.png', utils.resize_by_factor(most_fit_difference, factor))
                 
-            if self.score_type == 'posterize' or self.score_type == 'semiperfect_posterize':
-                most_fit_post =  utils.posterize(np.copy(most_fit_mon[0]))
-                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_post.png', utils.resize_by_factor(most_fit_post, factor))
-                most_fit_difference = utils.get_difference_sprite(utils.posterize(np.copy(target_mon[2])), most_fit_post)
-                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postdiff.png', utils.resize_by_factor(most_fit_difference, factor))
+            #if self.posterize:
+            #    most_fit_post =  utils.posterize(np.copy(most_fit_mon[0]))
+            #    imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_post.png', utils.resize_by_factor(most_fit_post, factor))
+            #    most_fit_difference = utils.get_difference_sprite(utils.posterize(np.copy(target_mon[2])), most_fit_post)
+            #    imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postdiff.png', utils.resize_by_factor(most_fit_difference, factor))
+            #    
+            #if self.posterize_hard:
+            #    most_fit_post4 =  utils.posterize_hard(np.copy(most_fit_mon[0]))
+            #    imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_post4.png', utils.resize_by_factor(most_fit_post4 , factor))
+            #    most_fit_post_4_difference = utils.get_difference_sprite(utils.posterize_hard(np.copy(target_mon[2])), most_fit_post4)
+            #    imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_post4diff.png', utils.resize_by_factor(most_fit_post_4_difference, factor))
+                
+            if self.score_type == 'RGBorders'.lower() or self.score_type=='RGBorders_GBW'.lower() or self.score_type=='borders_only'.lower():
+                most_fit_border1, most_fit_border2 = utils.get_raw_border_sprites(np.copy(most_fit_mon[0]), True)
+                most_fit_border = np.hstack((most_fit_border1,most_fit_border2))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_borders.png', utils.resize_by_factor(most_fit_border , factor))
                 
             if self.score_type == 'Binposter':
                 most_fit_post =  utils.posterize_binary(np.copy(most_fit_mon[0]))

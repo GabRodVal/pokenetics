@@ -89,7 +89,7 @@ def rgba_to_lab(img):
 
     tech_rgb = rgb_img[:,:, 0:3]
     #tech_rgb = np.divide(tech_rgb,255.0)
-    lab_img = cv2.cvtColor(tech_rgb.astype(np.float32) / 255, cv2.COLOR_RGB2LAB)
+    lab_img = cv2.cvtColor(tech_rgb.astype(np.float32), cv2.COLOR_RGB2LAB)
     #lab_img = lab_img//255.0
     
     return lab_img
@@ -176,25 +176,31 @@ def to_monochrome(img, rr:bool, gg:bool, bb:bool):
     
     return new_img
         
-def format_team_pk_scr_fit(team):
+def format_team_pk_scr_fit(team, dupes:bool):
 
-    wk_team = team.copy()
-    unq_team = []
-    while len(wk_team) > 0:
-        subject = wk_team.pop()
-        unq_team.append([subject.copy(), 0, 0])
-        md_team = []
-        if len(wk_team) > 0:
-            for pk in wk_team:
-                if np.array_equal(subject, pk):
-                    continue
-                else:
-                    md_team.append(pk)
-                    
-        wk_team = md_team.copy()
-        md_team.clear()
+    if not(dupes):
+        wk_team = team.copy()
+        unq_team = []
+        while len(wk_team) > 0:
+            subject = wk_team.pop()
+            unq_team.append([subject.copy(), 0, 0])
+            md_team = []
+            if len(wk_team) > 0:
+                for pk in wk_team:
+                    if np.array_equal(subject, pk):
+                        continue
+                    else:
+                        md_team.append(pk)
+                        
+            wk_team = md_team.copy()
+            md_team.clear()
+    else:
+        wk_team = team.copy()
+        unq_team = []
+        while len(wk_team) > 0:
+            subject = wk_team.pop()
+            unq_team.append([subject.copy(), 0, 0])
         
-    
     return unq_team
    
 def to_binary_string(pkm):
@@ -414,7 +420,7 @@ def get_difference_sprite(ref_mon, acc_mon):
     diff_sprite = np.zeros_like(ref_mon)
 
     for j in range(0, len(ref_mon)):
-        for k in range(0, len(ref_mon)):
+        for k in range(0, len(ref_mon[0])):
             if (ref_mon[j][k][3] == 255 and acc_mon[j][k][3] == 0) or (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 255):
                 diff_sprite[j][k] = [255,255,255,255]
             elif (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0) or (np.array_equal(ref_mon[j][k], acc_mon[j][k])):
@@ -428,9 +434,29 @@ def get_difference_sprite(ref_mon, acc_mon):
     #mk = diff_sprite[:,:] == [0, 0, 0, 255]
     return diff_sprite
 
+def get_similarity_sprite(ref_mon, acc_mon):
+    sim_sprite = np.zeros_like(ref_mon)
+
+    for j in range(0, len(ref_mon)):
+        for k in range(0, len(ref_mon[0])):
+            if (ref_mon[j][k][3] != acc_mon[j][k][3]):
+                sim_sprite[j][k] = [0,0,0,255]
+            elif (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0):
+                sim_sprite[j][k] = [255,255,255,128]
+            else:
+                for l in range(0,3):
+                    sim_sprite[j][k][l] = max(ref_mon[j][k][l] - abs(ref_mon[j][k][l] - acc_mon[j][k][l]), 0)
+                sim_sprite[j][k][3] = 255
+                #sim_sprite[j][k] = [0,0,0,255]
+                    
+    return sim_sprite
+                
+
 def resize_by_factor(img_array, factor):
-    resized_len = math.floor(len(img_array) * factor)
-    return cv2.resize(img_array, (resized_len, resized_len), interpolation=cv2.INTER_NEAREST)
+    resized_len_y = math.floor(len(img_array) * factor)
+    resized_len_x = math.floor(len(img_array[0]) * factor)
+    return cv2.resize(img_array, (resized_len_x, resized_len_y), interpolation=cv2.INTER_NEAREST)
+
 def pad_hex_0(hex_code, lgt):
     if len(hex_code) < lgt:
         for it in range (lgt - len(hex_code)):

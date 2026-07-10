@@ -36,14 +36,15 @@ class Party():
             fitness_type='normalize',
             verbose=False,
             save_all_imgs=True,
-            posterize=False
+            posterize=False,
+            posterize_hard=False
             ):
         
         self.score_type = score_type.lower()
         self.fitness_rate = pop_size
 
         # Pokedex
-        self.pokedex = pokedex.Pokedex(target_dex=target_dex, easy_shiny=easy_shiny, score_type=self.score_type, generation=generation, posterize=posterize)
+        self.pokedex = pokedex.Pokedex(target_dex=target_dex, easy_shiny=easy_shiny, score_type=self.score_type, generation=generation, posterize=posterize, posterize_hard=posterize_hard)
 
         self.target_dex = target_dex
         self.target_mon = self.pokedex.get_target_pokemon()
@@ -56,7 +57,9 @@ class Party():
         self.cur_gen = 0
         self.team = []
         self.fit_team = []
-
+        #
+        self.dupes = True
+        #
         self.base_dir = ''
         self.elitism_interval = (elitism_interval +1)
         #
@@ -171,7 +174,7 @@ class Party():
         #if self.reg_pop:
         #    self.pop_size = min(max(round(self.og_pop_size + ((self.og_pop_size/2) * math.cos(math.radians(self.cur_gen * 3)))), 8), self.pokedex.get_pokedex_length())
         # Test lower variation rate for crossover? 0.2? 0.25? 0.15? higher maybe? 0.33?
-        self.crossover_rate = 0.64 + (0.32 * math.cos(math.radians(self.cur_gen * 2 )))
+        self.crossover_rate = 0.64 + (0.16 * math.cos(math.radians(self.cur_gen * 2 )))
 
         #if self.elitism:
         #    self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate * 0.875) * math.sin(math.radians(self.cur_gen * 3))), 0.005), 0.5) 
@@ -313,7 +316,6 @@ class Party():
                 if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
                     new_gen.append(self.mutation.mutate(np.copy(least_fit_mon[0])))
         
-        if debug:print(f'new gen 1>{len(new_gen)}>{len(new_gen[0])}>{len(new_gen[0][0])}')
         
         for iter in range(len(self.team)):
             if self.elitism and (len(fittest_few) < self.pop_size * self.elitism_rate) and len(sorted_team) > 0 and self.cur_gen % self.elitism_interval == 0:
@@ -334,19 +336,18 @@ class Party():
         if self.elitism and self.cur_gen % self.elitism_interval == 0:
             for ft in fittest_few:
                 new_gen.append(ft)
-        
-        if debug:print(f'new gen 2>{len(new_gen)}>{len(new_gen[0])}>{len(new_gen[0][0])}')
-        
+                
+                
+                
         dupelen = len(new_gen)
-        self.team = utils.format_team_pk_scr_fit(new_gen)
+        self.team = utils.format_team_pk_scr_fit(new_gen, dupes=self.dupes)
         unqlen = len(self.team)
         new_gen.clear()
-        if debug:print('remove dupes: OK')
         
         #for pk in new_gen:
         #    self.team.append(pk)
             
-        if dupelen != unqlen and debug:
+        if dupelen != unqlen and debug and not(self.dupes):
             print(f'\033[94m [Duplicatas removidas: Tam. Equipe {dupelen} -> {unqlen} (-{dupelen-unqlen})] \033[0m')
 
         if len(self.team) < self.pop_size:
