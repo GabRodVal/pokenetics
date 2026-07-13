@@ -1,4 +1,6 @@
 import numpy as np
+import cupy as cp
+import cupyx.scipy.ndimage as scimg
 from PIL import Image, ImageFile, ImageOps
 import cv2
 import math
@@ -8,17 +10,18 @@ import math
 HEX_TABLE = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F']
 
 def to_8bit_safe(num):
-    return np.uint8(max(min(num, 255),0))
+    #print(num)
+    return max(min(num, 255),0)
     
 def to_grayscale(image):
     #mask = img[:,:,3] == 0
     #img[mask] = [255,255,255,255]
     #img[mask] = [0,255,0,255]
-    
-    img = np.copy(image)
+    img = cp.asnumpy(image)
     mk = img[:,:,3] == 0
     
-    temp_img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    #temp_img = cp.zeros_like(img)
+    temp_img = cp.asarray(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY))
     #ret, mut_img5 = cv2.threshold(cv2.cvtColor(img_arch, cv2.COLOR_RGB2GRAY), 127, 255, cv2.THRESH_BINARY)
     
     '''for i in range(img.shape[0]):
@@ -26,9 +29,9 @@ def to_grayscale(image):
             #t_rd = img[i][j]//3
             if img[i][j][3] < 255:
                 continue
-            temp_img[i][j] = (np.mean(img[i][j]))'''
+            temp_img[i][j] = (cp.mean(img[i][j]))'''
             
-    ########################################################temp_img[:,:] = np.mean(img[:,:])
+    ########################################################temp_img[:,:] = cp.mean(img[:,:])
     
     #temp_img[mask] = 255
     #cv2.imwrite('teste_cinzento222.jpg', new_img)
@@ -37,15 +40,15 @@ def to_grayscale(image):
 
 def to_black_n_white(image):
     
-    #temp_img = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
-    img = np.copy(image)
-    _, temp_img = cv2.threshold(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), 127, 255, cv2.THRESH_BINARY)
+    #temp_img = cp.zeros((img.shape[0],img.shape[1]),dtype=cp.uint8)
+    img = cp.copy(image)
+    #_, temp_img = cv2.threshold(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), 127, 255, cv2.THRESH_BINARY)
     
     mk = img[:,:,3] == 0
-    #t_im = np.copy(img)
-    #t_im[mk] = [128,128,128,255]
+    t_im = cp.copy(img)
+    t_im[mk] = [128,128,128,255]
     
-    '''ref = to_grayscale(t_im)
+    ref = to_grayscale(t_im)
     
     
     mk2 = ref[:,:] >= 128
@@ -55,16 +58,15 @@ def to_black_n_white(image):
     #    for j in range(ref.shape[1]):
     #        temp_img[i][j] = (ref[i][j]>= 128) * 255
     
-    temp_img = np.zeros((img.shape[0],img.shape[1]),dtype=np.uint8)
+    temp_img = cp.zeros((img.shape[0],img.shape[1]),dtype=cp.uint8)
     temp_img[mk2] = 255
     temp_img[mk3] = 0
-    temp_img[mk] = 127'''
-    
     temp_img[mk] = 127
+    
     return temp_img
 
 def to_rgba(img):
-    temp_img = np.zeros((img.shape[0],img.shape[1], 4),dtype=np.uint8)
+    temp_img = cp.zeros((img.shape[0],img.shape[1], 4),dtype=cp.uint8)
 
     if len(img.shape) == 2:
         for i in range(img.shape[0]):
@@ -84,15 +86,15 @@ def to_rgba(img):
 def rgba_to_lab(img):
     #print(math.dist(p1, p2)*96*96)
     mk = img[:,:,3] < 255
-    rgb_img = np.copy(img)
+    rgb_img = cp.copy(img)
     rgb_img[mk] = [255,255,255,255]
 
-    tech_rgb = rgb_img[:,:, 0:3]
-    #tech_rgb = np.divide(tech_rgb,255.0)
-    lab_img = cv2.cvtColor(tech_rgb.astype(np.float32), cv2.COLOR_RGB2LAB)
+    tech_rgb = cp.asnumpy(rgb_img[:,:, 0:3])
+    #tech_rgb = cp.divide(tech_rgb,255.0)
+    lab_img = cv2.cvtColor(tech_rgb.astype(cp.float32), cv2.COLOR_RGB2LAB)
     #lab_img = lab_img//255.0
     
-    return lab_img
+    return cp.array(lab_img)
 
 def posterize(image):
     #[ 0, 68, 136, 204, 255] #5
@@ -100,15 +102,15 @@ def posterize(image):
     #[ 0, 51, 102, 153, 204, 255] #6
     ##00, 33, 66,  99,  CC,  FF
     
-    img = np.copy(image)
-    n_img = np.multiply(np.round(np.divide(img, 51)), 51)
+    img = cp.copy(image)
+    n_img = cp.multiply(cp.round(cp.divide(img, 51)), 51)
     
     #for i in range(img.shape[0]):
     #    for j in range(img.shape[1]):
     #        for l in range(3):
     #            img[i][j][l] = (51 * round(img[i][j][l]/51))
     
-    return np.array(n_img, dtype=np.uint8)
+    return cp.array(n_img, dtype=cp.uint8)
     
     
                 
@@ -119,8 +121,8 @@ def posterize_hard(image):
     ##00, 33, 66,  99,  CC,  FF
     #[ 0, 85, 170, 255]
     
-    img = np.copy(image)
-    n_img = np.multiply(np.round(np.divide(img, 85)), 85)
+    img = cp.copy(image)
+    n_img = cp.multiply(cp.round(cp.divide(img, 85)), 85)
     
     
     #for i in range(img.shape[0]):
@@ -129,7 +131,7 @@ def posterize_hard(image):
     #            img[i][j][l] = (51 * round(img[i][j][l]/51))
                 
 
-    return np.array(n_img, dtype=np.uint8)
+    return cp.array(n_img, dtype=cp.uint8)
 
 def posterize_binary(image):
     #[ 0, 68, 136, 204, 255] #5
@@ -138,7 +140,7 @@ def posterize_binary(image):
     ##00, 33, 66,  99,  CC,  FF
     #[ 0, 85, 170, 255]
     
-    _, n_img = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)
+    _, n_img = cv2.threshold(cp.asnumpy(image), 127, 255, cv2.THRESH_BINARY)
     
     
     #for i in range(img.shape[0]):
@@ -147,12 +149,12 @@ def posterize_binary(image):
     #            img[i][j][l] = (51 * round(img[i][j][l]/51))
                 
 
-    return np.array(n_img, dtype=np.uint8)
+    return cp.array(n_img, dtype=cp.uint8)
 
 
 def to_monochrome(img, rr:bool, gg:bool, bb:bool):
     
-    new_img = np.copy(img)
+    new_img = cp.copy(img)
     
     mkr = img[:,:,0] > 0
     mkg = img[:,:,1] > 0
@@ -187,7 +189,7 @@ def format_team_pk_scr_fit(team, dupes:bool):
             md_team = []
             if len(wk_team) > 0:
                 for pk in wk_team:
-                    if np.array_equal(subject, pk):
+                    if cp.array_equal(subject, pk):
                         continue
                     else:
                         md_team.append(pk)
@@ -241,23 +243,25 @@ def find_edges(img):
     #g_img = to_black_n_white(img)
     g_img = to_grayscale(img)
     
-    edge_mat_1 = [
+    edge_mat_1 = cp.array([
     [ 0, -1, 0],
     [-1, 4, -1],
     [ 0, -1, 0]
-    ]
+    ],dtype=np.int16)
 
-    edge_mat_2 = [
+    edge_mat_2 = cp.array([
     [-1, -1, -1],
     [-1,  8, -1],
     [-1, -1, -1]
-    ]
+    ], dtype=np.int16)
 
     #border_bool = [[[False, False] for _ in range(g_img.shape[1])]
     #           for _ in range(g_img.shape[0])]
     
-    raw_border_sprites_1 = np.zeros_like(g_img)
-    raw_border_sprites_2 = np.zeros_like(g_img)
+    raw_border_sprites_1 = cp.zeros_like(g_img)
+    raw_border_sprites_2 = cp.zeros_like(g_img)
+    
+    #cv2.filter2D()
     
     for i in range(img.shape[0]-len(edge_mat_1)-1):
         for j in range(img.shape[1]-len(edge_mat_1)-1):
@@ -265,19 +269,11 @@ def find_edges(img):
             mat_2_sum = 0
             for im in range(len(edge_mat_1)):
                 for jm in range (len(edge_mat_1[0])):
-                    mat_1_sum += int(g_img[i + im][j + jm]) * edge_mat_1[im][jm]
-                    mat_2_sum += int(g_img[i + im][j + jm]) * edge_mat_2[im][jm]
+                    mat_1_sum += g_img[i + im][j + jm] * edge_mat_1[im][jm]
+                    mat_2_sum += g_img[i + im][j + jm] * edge_mat_2[im][jm]
             raw_border_sprites_1[i][j] = to_8bit_safe(mat_1_sum)
             raw_border_sprites_2[i][j] = to_8bit_safe(mat_2_sum)
     
-    
-    '''if raw_border_sprites_1.shape[0] >= 80:
-        tpt = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-        
-        #b_a = cv2.morphologyEx(raw_border_sprites_1, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)   
-        raw_border_sprites_1 = cv2.morphologyEx(raw_border_sprites_1, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)    
-        #b_a = raw_border_sprites_1 
-        raw_border_sprites_2 = cv2.morphologyEx(raw_border_sprites_2, op=cv2.MORPH_CLOSE, kernel=tpt, iterations=1)     '''
         #b_b = cv2.erode(b_b, kernel=tpt, iterations=1)  
     mka = raw_border_sprites_1[:,:] > 127
     #print(mka.shape)
@@ -312,8 +308,8 @@ def get_raw_border_sprites(img, gray:bool):
     [-1, -1, -1]
     ]
 
-    raw_border_sprites_1 = np.zeros_like(g_img)
-    raw_border_sprites_2 = np.zeros_like(g_img)
+    raw_border_sprites_1 = cp.zeros_like(g_img)
+    raw_border_sprites_2 = cp.zeros_like(g_img)
     
     for i in range(img.shape[0]-len(edge_mat_1)-1):
         for j in range(img.shape[1]-len(edge_mat_1)-1):
@@ -330,24 +326,24 @@ def get_raw_border_sprites(img, gray:bool):
 
 def get_border_sprites(arr):
     print(f'arrrr:{len(arr[0])},{len(arr[1])}')
-    arr_a = np.array(arr[0])
-    arr_b = np.array(arr[1])
+    arr_a = cp.array(arr[0])
+    arr_b = cp.array(arr[1])
     print('a',arr_a.shape)
     print('b',arr_b.shape)
-    n_img_a = np.zeros((len(arr[0]), len(arr[1]), 4))
-    n_img_b = np.zeros((len(arr[0]), len(arr[1]), 4))
+    n_img_a = cp.zeros((len(arr[0]), len(arr[1]), 4),dtype=cp.uint8)
+    n_img_b = cp.zeros((len(arr[0]), len(arr[1]), 4),dtype=cp.uint8)
     
     for i in range(len(arr[0])):
         for j in range(len(arr[1])):
-            p_a = (255 * arr[0][i][j])
+            p_a = (255 * arr[0][i][j].item())
             #print('a',arr[0][i][j])
-            p_b = (255 * arr[1][i][j])
+            p_b = (255 * arr[1][i][j].item())
             #print('b',arr[1][i][j])
             
-            n_img_a[i][j] = [p_a, p_a, p_a, 255]
-            n_img_b[i][j] = [p_b, p_b, p_b, 255]
+            n_img_a[i][j] = cp.array([p_a, p_a, p_a, 255])
+            n_img_b[i][j] = cp.array([p_b, p_b, p_b, 255])
             
-    return np.array(n_img_a,dtype=np.uint8), np.array(n_img_b,dtype=np.uint8)
+    return n_img_a, n_img_b
             
 def fit_img(img):
     x_a_pad = 0
@@ -409,53 +405,73 @@ def fit_img(img):
         break
             
             
-    cropped_img = np.copy(img)[x_a_pad:(img_res[0]-x_b_pad), y_a_pad: (img_res[1]-y_b_pad)]
+    cropped_img = cp.copy(img)[x_a_pad:(img_res[0]-x_b_pad), y_a_pad: (img_res[1]-y_b_pad)]
     
     if cropped_img.shape[0] < 10 or cropped_img.shape[1] < 10:
-        cropped_img = np.copy(img)
+        cropped_img = cp.copy(img)
     
-    return cv2.resize(cropped_img, (img_res[0],img_res[1]), interpolation=cv2.INTER_NEAREST)
+    return cp.asarray(cv2.resize(cropped_img, (img_res[0],img_res[1]), interpolation=cv2.INTER_NEAREST))
 
 def get_difference_sprite(ref_mon, acc_mon):
-    diff_sprite = np.zeros_like(ref_mon)
+    diff_sprite = cp.zeros_like(ref_mon)
 
-    for j in range(0, len(ref_mon)):
+    mk_diff = ref_mon[:,:,3] != acc_mon[:,:,3]
+    mk_eq = (ref_mon[:,:,3] == 0) & (acc_mon[:,:,3] == 0)
+    
+    diff_sprite[:,:,3] = 255
+    diff_sprite[:,:,:3] = cp.abs(ref_mon[:,:,:3] - acc_mon[:,:,:3])
+    diff_sprite[mk_diff] = cp.array([255,255,255,255])
+    diff_sprite[mk_eq] = cp.array([34,68,34,192])
+
+    '''for j in range(0, len(ref_mon)):
         for k in range(0, len(ref_mon[0])):
             if (ref_mon[j][k][3] == 255 and acc_mon[j][k][3] == 0) or (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 255):
-                diff_sprite[j][k] = [255,255,255,255]
-            elif (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0) or (np.array_equal(ref_mon[j][k], acc_mon[j][k])):
-                diff_sprite[j][k] = [0,17,0,192]
+                diff_sprite[j][k] = cp.array([255,255,255,255])
+            elif (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0) or (cp.array_equal(ref_mon[j][k], acc_mon[j][k])):
+                diff_sprite[j][k] = cp.array([0,34,0,192])
             else:
                 for l in range (0, 3):
-                    diff_sprite[j][k][l] = np.int32(abs(np.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
-                diff_sprite[j][k][3] = 255
+                    diff_sprite[j][k][l] = abs(ref_mon[j][k][l].item() - abs(ref_mon[j][k][l].item() - acc_mon[j][k][l].item()))
+                diff_sprite[j][k][3] = 255'''
     
     
     #mk = diff_sprite[:,:] == [0, 0, 0, 255]
     return diff_sprite
 
 def get_similarity_sprite(ref_mon, acc_mon):
-    sim_sprite = np.zeros_like(ref_mon)
+    sim_sprite = cp.zeros_like(ref_mon)
+    
+    mk_diff = ref_mon[:,:,3] != acc_mon[:,:,3]
+    mk_eq = (ref_mon[:,:,3] == 0) & (acc_mon[:,:,3] == 0)
+    
+    sim_sprite[:,:,3] = 255
+    sim_sprite[:,:,:3] = cp.abs(ref_mon[:,:,:3] - cp.abs(ref_mon[:,:,:3] - acc_mon[:,:,:3]))
+    sim_sprite[mk_diff] = cp.array([0,0,0,255])
+    sim_sprite[mk_eq] = cp.array([255,255,255,128])
 
-    for j in range(0, len(ref_mon)):
+    '''for j in range(0, len(ref_mon)):
         for k in range(0, len(ref_mon[0])):
             if (ref_mon[j][k][3] != acc_mon[j][k][3]):
-                sim_sprite[j][k] = [0,0,0,255]
+                sim_sprite[j][k] = cp.array([0,0,0,255])
             elif (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0):
-                sim_sprite[j][k] = [255,255,255,128]
+                sim_sprite[j][k] = cp.array([255,255,255,128])
             else:
                 for l in range(0,3):
                     sim_sprite[j][k][l] = max(ref_mon[j][k][l] - abs(ref_mon[j][k][l] - acc_mon[j][k][l]), 0)
                 sim_sprite[j][k][3] = 255
-                #sim_sprite[j][k] = [0,0,0,255]
+                #sim_sprite[j][k] = [0,0,0,255]'''
                     
     return sim_sprite
                 
 
 def resize_by_factor(img_array, factor):
-    resized_len_y = math.floor(len(img_array) * factor)
-    resized_len_x = math.floor(len(img_array[0]) * factor)
-    return cv2.resize(img_array, (resized_len_x, resized_len_y), interpolation=cv2.INTER_NEAREST)
+    resized_len_y = math.floor(img_array.shape[0] * factor)
+    resized_len_x = math.floor(img_array.shape[1] * factor)
+    
+    #scimg.affine_transform(img_array)
+    
+    return cp.asarray(cv2.resize(cp.asnumpy(img_array), (resized_len_x, resized_len_y), interpolation=cv2.INTER_NEAREST), dtype=np.uint8)
+    #return cp.resize(img_array, (resized_len_x, resized_len_y, img_array.shape[2]))#, interpolation=cv2.INTER_NEAREST)
 
 def pad_hex_0(hex_code, lgt):
     if len(hex_code) < lgt:
@@ -464,7 +480,7 @@ def pad_hex_0(hex_code, lgt):
     return hex_code
 
 def color_to_hex(clr_arr):
-    px = np.copy(clr_arr)
+    px = cp.copy(clr_arr)
     if len(px) == 4:
         hex_code = f'{px[0]:02x}{px[1]:02x}{px[2]:02x}{px[3]:02x}'
     elif len(px) == 3:
@@ -520,9 +536,9 @@ def get_color_list(img, skip_alpha=False):
 def get_color_dict(img, posterize:bool, skip_alpha=False):
 
         if posterize:
-            n_img = posterize(np.copy(img))
+            n_img = posterize(cp.copy(img))
         else:
-            n_img = np.copy(img)
+            n_img = cp.copy(img)
         
         each_color = dict()
 
@@ -546,9 +562,9 @@ def get_color_dict(img, posterize:bool, skip_alpha=False):
     
 def bayer_dithering_RGB(img):
     sm_img = resize_by_factor(img, 0.5)
-    bayer = np.zeros_like(sm_img)
-    
-    (bb,gg,rr,alpha) = cv2.split(sm_img)
+    bayer = cp.zeros_like(sm_img)
+    #(bb,gg,rr,alpha) = cv2.split(sm_img)
+    (bb,gg,rr,alpha) = cp.split(sm_img)
 
     bayer[1::2,0::2,2] = rr[1::2,0::2]
     bayer[0::2,0::2,1] = gg[0::2,0::2] 
@@ -563,11 +579,12 @@ def bayer_dithering_RGB(img):
 
 def bayer_dithering_BY(img):
     sm_img = resize_by_factor(img, 0.5)
-    bayer = np.zeros_like(sm_img)
+    bayer = cp.zeros_like(sm_img)
     
-    (bb,gg,rr,alpha) = cv2.split(sm_img)
+    #(bb,gg,rr,alpha) = cv2.split(sm_img)
+    (bb,gg,rr,alpha) = cp.split(sm_img)
 
-    yy = np.uint8(np.divide(np.add(np.int16(rr),np.int16(gg)), 2))
+    yy = cp.uint8(cp.divide(cp.add(cp.int16(rr),cp.int16(gg)), 2))
     
     bayer[1::2,0::2,0] = bb[1::2,0::2]
     

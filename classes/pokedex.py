@@ -1,5 +1,8 @@
 from random import randint, choices, sample, uniform, seed
 import numpy as np
+import cupy as cp
+import cupyx.scipy.ndimage
+
 import classes.utils as utils
 import classes.colordiffmap as colormap
 from PIL import Image
@@ -75,10 +78,12 @@ class Pokedex():
         self.score_type = score_type
         print(score_type)
         
-        self.target_border_matrix = utils.find_edges(np.copy(target_image))
-        self.target_lab = utils.rgba_to_lab(np.copy(target_image))
-        self.target_gray = utils.to_grayscale(np.copy(target_image))
-        self.target_BW = utils.to_black_n_white(np.copy(target_image))
+        print(type(target_image))
+        
+        self.target_border_matrix = utils.find_edges(cp.copy(target_image))
+        self.target_lab = utils.rgba_to_lab(cp.copy(target_image))
+        self.target_gray = utils.to_grayscale(cp.copy(target_image))
+        self.target_BW = utils.to_black_n_white(cp.copy(target_image))
         self.target_mon = [target_dex, self.pokedex[str(target_dex)]["name"], target_image, 0]
         self.target_mon[3] = self.aval_target(target_image, target_image)
         
@@ -116,6 +121,7 @@ class Pokedex():
             img_arch = cv2.resize(img_arch, (self.dim[0], self.dim[0]))
         
         ######
+        img_arch = cp.asarray(img_arch)
         if self.posterize_hard_all:
             img_arch = utils.posterize_hard(img_arch)
         elif self.posterize_all:
@@ -167,7 +173,6 @@ class Pokedex():
 
     # Testar diferentes formas de avaliação sobre as mesmas condições (72, 600, wave, EM:OFF)
     def aval_target(self, ref_mon, acc_mon):
-        score = 0
         if self.score_type == 'RGBA'.lower():
             score = self.aval_target_standard(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'Grayscale'.lower():
@@ -223,20 +228,29 @@ class Pokedex():
     
     # Testar diferentes formas de avaliação sobre as mesmas condições (72, 600, wave, EM:OFF)
     def aval_target_standard(self, ref_mon, acc_mon):
-        score = np.int32(0)
-
-        for j in range(0, len(ref_mon)):
+        score = 0
+        mk_uneq_a = ref_mon[:,:,3] != acc_mon[:,:,3]
+        mk_tm = (ref_mon[:,:,3] == 0) & (acc_mon[:,:,3] == 0)
+        
+        
+        '''for j in range(0, len(ref_mon)):
             for k in range(0, len(ref_mon)):
                 if ref_mon[j][k][3] != acc_mon[j][k][3]:
                     continue
                 elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
-                    #score += np.int32(255*4)
-                    score += np.int32(255*3)
+                    #score += cp.int32(255*4)
+                    score += 255 * 3
                 else:
                     #for l in range (0, 4):
                     for l in range (0, 3):
-                        score += np.int32(255 - abs(np.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
-            
+                        score += cp.int32(255 - abs(cp.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))'''
+        
+        all_values = 255 - cp.abs(ref_mon[:,:,:3] - acc_mon[:,:,:3])
+        all_values[mk_uneq_a] = 0
+        all_values[mk_tm] = 255
+        
+        
+        score = cp.sum(all_values)
         return score
     
     def aval_target_distance(self, ref_mon, acc_mon):
@@ -247,7 +261,7 @@ class Pokedex():
                 if ref_mon[j][k][3] != acc_mon[j][k][3]:
                     continue
                 elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
-                    #score += np.int32(255*4)
+                    #score += cp.int32(255*4)
                     score += MAX_DIST
                 else:
                     score += (MAX_DIST - (math.dist(ref_mon[j][k][0:3],acc_mon[j][k][0:3])))
@@ -259,9 +273,53 @@ class Pokedex():
     def aval_target_RGB_colour_distance(self, ref_mon, acc_mon):
         #typedef struct {
         #unsigned char r, g, b;
-        #} RGB;
-        score = 0.0
-        #e1 = ref_mon
+        #} RGB;        
+        
+        '''score = 0.0
+        mk_uneq_a = ref_mon[:,:,3] != acc_mon[:,:,3]
+        mk_tm = (ref_mon[:,:,3] == 0) & (acc_mon[:,:,3] == 0)
+        all_values = 255 - cp.abs(ref_mon[:,:,:3] - acc_mon[:,:,:3])
+        all_values[mk_uneq_a] = 0
+        all_values[mk_tm] = 255
+        
+        score = cp.sum(all_values)'''
+        mk_a = ref_mon[:,:,3] < 255
+        mk_b = acc_mon[:,:,3] < 255
+        mk_c = (ref_mon[:,:,3] < 255) & (acc_mon[:,:,3] < 255)
+        
+        ref_float = cp.copy(ref_mon).astype(np.float32)
+        acc_float = cp.copy(acc_mon).astype(np.float32)
+        
+        tr = ref_float[:, :, 0]
+        cr = acc_float[:, :, 0]
+        tg = ref_float[:, :, 1]
+        cg = acc_float[:, :, 1]
+        tb = ref_float[:, :, 2]
+        cb = acc_float[:, :, 2]
+        ta = ref_float[:, :, 3]
+        ca = acc_float[:, :, 3]
+        
+        #( tg, tb, ta) =  cp.split(ref_mon)
+        #( cg, cb, ca) =  cp.split(acc_mon)
+        
+        rm = (tr + cr)/2
+        dr = tr - cr
+        dg = tg - cg
+        db = tb - cb
+        
+        #mk_a = ta[:,:] == 0
+        #mk_b = ca[:,:] == 0
+        #mk_c = mk_a[:,:] == mk_b[:,:]
+        
+        clr_dist = MAX_RGB_COLOUR_DIST - cp.sqrt(cp.divide(cp.multiply((512.0 + rm),(dr*dr)),256.0) + 4 * dg * dg + cp.divide(cp.multiply((767 - rm),(db*db)),256.0))
+        
+        clr_dist[mk_a] = 0
+        clr_dist[mk_b] = 0
+        clr_dist[mk_c] = MAX_RGB_COLOUR_DIST 
+        
+        score = cp.sum(clr_dist)
+        
+        '''#e1 = ref_mon
         #e2 = acc_mon
         for j in range(0, len(ref_mon)):
             for k in range(0, len(ref_mon)):
@@ -271,8 +329,8 @@ class Pokedex():
                     score += MAX_RGB_COLOUR_DIST
                     continue
                 else:
-                    ed1 = np.float32(ref_mon[j][k])
-                    ed2 = np.float32(acc_mon[j][k])
+                    ed1 = cp.float32(ref_mon[j][k])
+                    ed2 = cp.float32(acc_mon[j][k])
                     
                     r_mean = (ed1[0] + ed2[0] )/2
                     rd = ed1[0] - ed2[0]
@@ -280,7 +338,7 @@ class Pokedex():
                     bd = ed1[2] - ed2[2]
                 
                     clr_dist = math.sqrt((((512 + r_mean)* rd * rd)/256) + 4*gd*gd + (((767 - r_mean)*bd*bd)/256))
-                    score += (MAX_RGB_COLOUR_DIST - abs(clr_dist))
+                    score += (MAX_RGB_COLOUR_DIST - abs(clr_dist))'''
         return score
     
     def aval_target_RGB_colour_distance_ignore_alpha(self, ref_mon, acc_mon):
@@ -291,8 +349,8 @@ class Pokedex():
                 if ref_mon[j][k][3]  < 255 or acc_mon[j][k][3] < 255:
                     continue
                 else:
-                    ed1 = np.float32(ref_mon[j][k])
-                    ed2 = np.float32(acc_mon[j][k])
+                    ed1 = cp.float32(ref_mon[j][k].get())
+                    ed2 = cp.float32(acc_mon[j][k].get())
                     
                     r_mean = (ed1[0] + ed2[0] )/2
                     rd = ed1[0] - ed2[0]
@@ -312,7 +370,7 @@ class Pokedex():
 
         for j in range(0, ref_mon.shape[0]):
             for k in range(0, ref_mon.shape[1]):
-                if np.array_equal(ref_mon[j][k], acc_mon[j][k]) or (ref_mon[j][k][3] == acc_mon[j][k][3] and ref_mon[j][k][3] == 0):
+                if cp.array_equal(ref_mon[j][k], acc_mon[j][k]) or (ref_mon[j][k][3] == acc_mon[j][k][3] and ref_mon[j][k][3] == 0):
                     score += MAX_DELTA_E_2000
                     continue
                 elif ref_mon[j][k][3] != acc_mon[j][k][3]:
@@ -339,7 +397,7 @@ class Pokedex():
 
         for j in range(0, ref_mon.shape[0]):
             for k in range(0, ref_mon.shape[1]):
-                if np.array_equal(ref_mon[j][k], acc_mon[j][k]) or (ref_mon[j][k][3] == acc_mon[j][k][3] and ref_mon[j][k][3] == 0):
+                if cp.array_equal(ref_mon[j][k], acc_mon[j][k]) or (ref_mon[j][k][3] == acc_mon[j][k][3] and ref_mon[j][k][3] == 0):
                     score += 2
                     continue
                 elif ref_mon[j][k][3] != acc_mon[j][k][3]:
@@ -397,14 +455,14 @@ class Pokedex():
         return score
 
     def aval_target_grayscale(self, ref_mon, acc_mon):
-        score = np.int32(0)
+        score = cp.int32(0)
 
-        ref_grey = utils.to_grayscale(np.copy(ref_mon))
-        acc_grey = utils.to_grayscale(np.copy(acc_mon))
+        ref_grey = utils.to_grayscale(cp.copy(ref_mon))
+        acc_grey = utils.to_grayscale(cp.copy(acc_mon))
 
         for j in range(0, len(ref_grey)):
             for k in range(0, len(ref_grey)):
-                score += np.int32(255 - abs(np.int32(ref_grey[j][k]) - acc_grey[j][k]))
+                score += cp.int32(255 - abs(cp.int32(ref_grey[j][k]) - acc_grey[j][k]))
 
         '''for j in range(0, len(ref_mon)):
             for k in range(0, len(ref_mon)):
@@ -413,21 +471,21 @@ class Pokedex():
                 elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
                     score += 255
                 else:
-                    ref_mean = int((np.int32(ref_mon[j][k][0]) + np.int32(ref_mon[j][k][1]) + np.int32(ref_mon[j][k][2]))/3)
-                    acc_mean = int((np.int32(acc_mon[j][k][0]) + np.int32(acc_mon[j][k][1]) + np.int32(acc_mon[j][k][2]))/3)
+                    ref_mean = int((cp.int32(ref_mon[j][k][0]) + cp.int32(ref_mon[j][k][1]) + cp.int32(ref_mon[j][k][2]))/3)
+                    acc_mean = int((cp.int32(acc_mon[j][k][0]) + cp.int32(acc_mon[j][k][1]) + cp.int32(acc_mon[j][k][2]))/3)
                     
-                    #print(np.int32(255 - abs(ref_mean - acc_mean)))
-                    score += np.int32(255 - abs(ref_mean - acc_mean))
+                    #print(cp.int32(255 - abs(ref_mean - acc_mean)))
+                    score += cp.int32(255 - abs(ref_mean - acc_mean))
                 
                     #print(f'{len(ref_mon)}-{len(ref_mon)}-{len(ref_mon)}')
                     #print(f'{len(acc_mon)}-{len(acc_mon)}-{len(acc_mon)}')'''
         return score
     
     def aval_target_binary(self, ref_mon, acc_mon):
-        score = np.int32(0)
+        score = cp.int32(0)
 
-        ref_bw = utils.to_black_n_white(np.copy(ref_mon))
-        acc_bw = utils.to_black_n_white(np.copy(acc_mon))
+        ref_bw = utils.to_black_n_white(cp.copy(ref_mon))
+        acc_bw = utils.to_black_n_white(cp.copy(acc_mon))
 
         for j in range(0, len(ref_bw)):
             for k in range(0, len(ref_bw)):
@@ -436,11 +494,11 @@ class Pokedex():
         return score
     
     def aval_target_perfect(self, ref_mon, acc_mon):
-        score = np.int32(0)
+        score = cp.int32(0)
 
         for j in range(0, len(ref_mon)):
             for k in range(0, len(ref_mon)):
-                if np.array_equal(ref_mon[j][k], acc_mon[j][k]) or (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0):
+                if cp.array_equal(ref_mon[j][k], acc_mon[j][k]) or (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0):
                     score += 1
             
         return score
@@ -448,7 +506,7 @@ class Pokedex():
     
     #semiperfect
     def aval_target_semi_perfect(self, ref_mon, acc_mon):
-        score = np.int32(0)
+        score = cp.int32(0)
 
         for j in range(0, len(ref_mon)):
             for k in range(0, len(ref_mon)):
@@ -465,16 +523,16 @@ class Pokedex():
     
     #posterized
     def aval_target_posterized(self, ref_mon, acc_mon):
-        ref_post = utils.posterize(np.copy(ref_mon))
-        acc_post = utils.posterize(np.copy(acc_mon))
+        ref_post = utils.posterize(cp.copy(ref_mon))
+        acc_post = utils.posterize(cp.copy(acc_mon))
 
         score = self.aval_target_standard(ref_post, acc_post)
             
         return score
     
     def aval_target_posterbin(self, ref_mon, acc_mon):
-        ref_post = utils.posterize_binary(np.copy(ref_mon))
-        acc_post = utils.posterize_binary(np.copy(acc_mon))
+        ref_post = utils.posterize_binary(cp.copy(ref_mon))
+        acc_post = utils.posterize_binary(cp.copy(acc_mon))
 
         score = self.aval_target_standard(ref_post, acc_post)
             
@@ -483,8 +541,8 @@ class Pokedex():
     def aval_target_semi_perfect_posterized(self, ref_mon, acc_mon):
         score = 0
         
-        ref_post = utils.posterize(np.copy(ref_mon))
-        acc_post = utils.posterize(np.copy(acc_mon))
+        ref_post = utils.posterize(cp.copy(ref_mon))
+        acc_post = utils.posterize(cp.copy(acc_mon))
 
         score = self.aval_target_semi_perfect(ref_post, acc_post)
             
@@ -493,14 +551,14 @@ class Pokedex():
     def aval_target_semi_perfect_posterized_weighted(self, ref_mon, acc_mon):
         score = 0
         
-        ref_post = utils.posterize(np.copy(ref_mon))
-        acc_post = utils.posterize(np.copy(acc_mon))
+        ref_post = utils.posterize(cp.copy(ref_mon))
+        acc_post = utils.posterize(cp.copy(acc_mon))
         
         for j in range(0, len(acc_post)):
             for k in range(0, len(acc_post)):
                 if ref_post[j][k][3] != acc_post[j][k][3]:
                     continue
-                if np.array_equal(ref_post[j][k], acc_post[j][k]):
+                if cp.array_equal(ref_post[j][k], acc_post[j][k]):
                     score += 4
                     continue
                 if ref_post[j][k][3] == acc_post[j][k][3] and ref_post[j][k][3] == 0:
@@ -515,14 +573,14 @@ class Pokedex():
     def aval_target_semi_perfect_posterized_weighted_borders(self, ref_mon, acc_mon):
         score = 0
         
-        ref_post = utils.posterize(np.copy(ref_mon))
-        acc_post = utils.posterize(np.copy(acc_mon))
+        ref_post = utils.posterize(cp.copy(ref_mon))
+        acc_post = utils.posterize(cp.copy(acc_mon))
         
         for j in range(0, len(acc_post)):
             for k in range(0, len(acc_post)):
                 if ref_post[j][k][3] != acc_post[j][k][3]:
                     continue
-                if np.array_equal(ref_post[j][k], acc_post[j][k]):
+                if cp.array_equal(ref_post[j][k], acc_post[j][k]):
                     score += max(4 * (2 * self.target_border_matrix[j][k][0]), 4)
                     continue
                 if ref_post[j][k][3] == acc_post[j][k][3] and ref_post[j][k][3] == 0:
@@ -542,24 +600,24 @@ class Pokedex():
     # full pix equal -> 6 pts
     # full alpha0 equal -> 4pts
     # channel equal -> 1pt
-    '''score = np.int32(0)
+    '''score = cp.int32(0)
 
         for j in range(0, len(ref_mon)):
             for k in range(0, len(ref_mon)):
                 if (ref_mon[j][k][3] == 255 and acc_mon[j][k][3] == 0) or (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 255):
                     continue
                 elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
-                    #score += np.int32(255*4)
-                    score += np.int32(255*3)
+                    #score += cp.int32(255*4)
+                    score += cp.int32(255*3)
                 else:
                     #for l in range (0, 4):
                     for l in range (0, 3):
-                        score += np.int32(255 - abs(np.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
+                        score += cp.int32(255 - abs(cp.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
             
         return score'''
     
     def aval_target_borders(self, ref_mon, acc_mon):
-        score = np.int32(0)
+        score = cp.int32(0)
         
         for j in range(0, len(ref_mon)):
             for k in range(0, len(ref_mon)):
@@ -568,18 +626,18 @@ class Pokedex():
                     continue
                 elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
                     score += max(255*3, (255*3) * (2 * self.target_border_matrix[j][k][0]))
-                elif np.array_equal(ref_mon[j][k], acc_mon[j][k]):
+                elif cp.array_equal(ref_mon[j][k], acc_mon[j][k]):
                     score += max(255*3, (255*3) * (2 * self.target_border_matrix[j][k][0]))
                 else:
                     for l in range(3):
-                        scr_diff = np.int32(255 - abs(np.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
+                        scr_diff = cp.int32(255 - abs(cp.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
                         score += max(scr_diff, scr_diff * 2 * self.target_border_matrix[j][k][0])
                     
         
         return score
     
     def aval_target_borders_only(self, acc_mon):
-        score = np.int32(0)
+        score = cp.int32(0)
         
         b_a, b_b =utils.find_edges(acc_mon)
         
@@ -624,8 +682,8 @@ class Pokedex():
     def aval_target_weighted_perfect_only_borders_posterbin(self, ref_mon, acc_mon):
         score = 0
         
-        ref_post = utils.posterize_binary(np.copy(ref_mon))
-        acc_post = utils.posterize_binary(np.copy(acc_mon))
+        ref_post = utils.posterize_binary(cp.copy(ref_mon))
+        acc_post = utils.posterize_binary(cp.copy(acc_mon))
         
         for j in range(0, len(acc_post)):
             for k in range(0, len(acc_post)):
@@ -633,11 +691,11 @@ class Pokedex():
                     continue
                 elif ref_post[j][k][3] == 0 and acc_post[j][k][3] == 0:
                     score += max(255*3, (255*3) * (2 * self.target_border_matrix[j][k][0]))
-                elif np.array_equal(ref_post[j][k], acc_post[j][k]):
+                elif cp.array_equal(ref_post[j][k], acc_post[j][k]):
                     score += max(255*3, (255*3) * (2 * self.target_border_matrix[j][k][0]))
                 else:
                     for l in range(3):
-                        scr_diff = np.int32(255 - abs(np.int32(ref_post[j][k][l]) - acc_post[j][k][l]))
+                        scr_diff = cp.int32(255 - abs(cp.int32(ref_post[j][k][l]) - acc_post[j][k][l]))
                         score += scr_diff
 
         return score
@@ -668,7 +726,7 @@ class Pokedex():
     def aval_target_mixed(self, ref_mon, acc_mon):
         aval_type = (math.floor(self.aval_number/200)%5)
         
-        if aval_type != (math.floor(self.aval_number-1/200)%5) and not(np.array_equal(ref_mon, acc_mon)):
+        if aval_type != (math.floor(self.aval_number-1/200)%5) and not(cp.array_equal(ref_mon, acc_mon)):
             self.target_mon[3] = self.aval_target(self.target_image, self.target_image)
         
         match aval_type:

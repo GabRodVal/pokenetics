@@ -1,5 +1,6 @@
 from random import randint, choices, sample, uniform, seed
 import numpy as np
+import cupy as cp
 import math
 import imageio.v3 as imio
 
@@ -142,11 +143,11 @@ class Party():
         #    self.elitism_rate = max(min(0.50, (self.og_elitism_rate/2) + ((0.50 - (self.og_elitism_rate/2))/(self.cur_gen/self.max_gen))), self.og_elitism_rate/2)
 
         if self.reg_pop:
-            self.pop_size = math.floor(max(8, (np.int32(self.og_pop_size * (1.2 * (self.cur_gen/self.max_gen))))))
+            self.pop_size = math.floor(max(8, (cp.int32(self.og_pop_size * (1.2 * (self.cur_gen/self.max_gen))))))
 
         #fit_reg = False
         #if fit_reg:
-        #    self.fitness_rate = max(8, (np.int32(self.pop_size * (1.5 * (self.cur_gen/self.max_gen)))))
+        #    self.fitness_rate = max(8, (cp.int32(self.pop_size * (1.5 * (self.cur_gen/self.max_gen)))))
 
     def regulate_self_chaotic(self):
         match randint(0,2):
@@ -161,11 +162,11 @@ class Party():
                 #    self.elitism_rate = uniform(0.01, 0.5)
 
                 if self.reg_pop:
-                    self.pop_size = max(8, randint(np.int16(self.og_pop_size/4), np.int16(self.og_pop_size * 2)))
+                    self.pop_size = max(8, randint(cp.int16(self.og_pop_size/4), cp.int16(self.og_pop_size * 2)))
                 
                 fit_reg =False
                 if fit_reg:
-                    self.fitness_rate = max(8, randint(np.int16(self.pop_size/3), np.int16(self.pop_size * 2)))
+                    self.fitness_rate = max(8, randint(cp.int16(self.pop_size/3), cp.int16(self.pop_size * 2)))
 
         
     #apply min and max on base regulate function
@@ -211,22 +212,22 @@ class Party():
     def create_target_ref_img(self):
         factor = math.floor(512/self.target_mon[2].shape[0])
         
-        imio.imwrite(f'{self.base_dir}/target.png', utils.resize_by_factor(self.target_mon[2], factor))
+        imio.imwrite(f'{self.base_dir}/target.png', cp.asnumpy(utils.resize_by_factor(self.target_mon[2], factor)))
         
         border_1, border_2 = self.pokedex.get_borders()
-        imio.imwrite(f'{self.base_dir}/target_b1.png', utils.resize_by_factor(border_1, factor))
-        imio.imwrite(f'{self.base_dir}/target_b2.png', utils.resize_by_factor(border_2, factor))
+        imio.imwrite(f'{self.base_dir}/target_b1.png', cp.asnumpy(utils.resize_by_factor(border_1, factor)))
+        imio.imwrite(f'{self.base_dir}/target_b2.png', cp.asnumpy(utils.resize_by_factor(border_2, factor)))
         
-        gray_target = utils.to_rgba(utils.to_grayscale(np.copy(self.target_mon[2])))
-        imio.imwrite(f'{self.base_dir}/target_gray.png', utils.resize_by_factor(gray_target, factor))
-        bw_target = utils.to_rgba(utils.to_black_n_white(np.copy(self.target_mon[2])))
-        imio.imwrite(f'{self.base_dir}/target_bw.png', utils.resize_by_factor(bw_target, factor))
-        posterized_target = utils.posterize(np.copy(self.target_mon[2]))
-        imio.imwrite(f'{self.base_dir}/target_post.png', utils.resize_by_factor(posterized_target, factor))
-        hard_posterized_target = utils.posterize_hard(np.copy(self.target_mon[2]))
-        imio.imwrite(f'{self.base_dir}/target_h_post.png', utils.resize_by_factor(hard_posterized_target, factor))
-        binary_posterized_target = utils.posterize_binary(np.copy(self.target_mon[2]))
-        imio.imwrite(f'{self.base_dir}/target_bin_post.png', utils.resize_by_factor(binary_posterized_target, factor))
+        gray_target = utils.to_rgba(utils.to_grayscale(cp.copy(self.target_mon[2])))
+        imio.imwrite(f'{self.base_dir}/target_gray.png', cp.asnumpy(utils.resize_by_factor(gray_target, factor)))
+        bw_target = utils.to_rgba(utils.to_black_n_white(cp.copy(self.target_mon[2])))
+        imio.imwrite(f'{self.base_dir}/target_bw.png', cp.asnumpy(utils.resize_by_factor(bw_target, factor)))
+        posterized_target = utils.posterize(cp.copy(self.target_mon[2]))
+        imio.imwrite(f'{self.base_dir}/target_post.png', cp.asnumpy(utils.resize_by_factor(posterized_target, factor)))
+        hard_posterized_target = utils.posterize_hard(cp.copy(self.target_mon[2]))
+        imio.imwrite(f'{self.base_dir}/target_h_post.png', cp.asnumpy(utils.resize_by_factor(hard_posterized_target, factor)))
+        binary_posterized_target = utils.posterize_binary(cp.copy(self.target_mon[2]))
+        imio.imwrite(f'{self.base_dir}/target_bin_post.png', cp.asnumpy(utils.resize_by_factor(binary_posterized_target, factor)))
     
     def selection(self, select_num):
         apt = [t[2] for t in self.team]
@@ -235,7 +236,7 @@ class Party():
             # Should return two values since this shit is only used for crossover
             selected = choices(self.team, weights=apt, k=select_num)
 
-            if not(np.array_equal(selected[0][0], selected[1][0])):
+            if not(cp.array_equal(selected[0][0], selected[1][0])):
                 break
 
         return selected
@@ -276,7 +277,7 @@ class Party():
         fittest_few = []
 
 
-        tournament = self.selection(np.int16(self.pop_size*self.perserverance_rate))
+        tournament = self.selection(cp.int16(self.pop_size*self.perserverance_rate))
 
         
         new_gen = []
@@ -291,7 +292,7 @@ class Party():
                 new_gen.append(t_m)
             else:
                 new_gen.append(tournament[it][0])
-            if self.save_all_imgs:imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(tournament[it][1]/self.target_mon[3])*100}_WW{it}.png', tournament[it][0])
+            if self.save_all_imgs:imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(tournament[it][1]/self.target_mon[3])*100}_WW{it}.png', cp.asnumpy(tournament[it][0]))
         
         sorted_team = sorted(self.team, key=lambda x: x[1])
         
@@ -304,17 +305,17 @@ class Party():
             
             if self.cur_gen % self.elitism_interval == 0:
                 if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
-                        fittest_few.append(self.mutation.mutate(np.copy(self.best_mon[0])))
+                        fittest_few.append(self.mutation.mutate(cp.copy(self.best_mon[0])))
                 else:
-                    fittest_few.append(np.copy(self.best_mon[0]))
-                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100}_SR0.png', most_fit_mon[0])
+                    fittest_few.append(cp.copy(self.best_mon[0]))
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100}_SR0.png', cp.asnumpy(most_fit_mon[0]))
             
             if self.pity:
                 least_fit_mon = sorted_team.pop(0)
-                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(least_fit_mon[1]/self.target_mon[3])*100}_FFF0.png', most_fit_mon[0])
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(least_fit_mon[1]/self.target_mon[3])*100}_FFF0.png', cp.asnumpy(most_fit_mon[0]))
                 new_gen.append(least_fit_mon[0])
                 if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
-                    new_gen.append(self.mutation.mutate(np.copy(least_fit_mon[0])))
+                    new_gen.append(self.mutation.mutate(cp.copy(least_fit_mon[0])))
         
         
         for iter in range(len(self.team)):
@@ -326,10 +327,10 @@ class Party():
                 else:
                     fittest_few.append(heir[0])
                 
-                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(heir[1]/self.target_mon[3])*100}_R{iter}.png', heir[0])
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(heir[1]/self.target_mon[3])*100}_R{iter}.png', cp.asnumpy(heir[0]))
             elif self.save_all_imgs and len(sorted_team) > 0:
                 old_poke = sorted_team.pop()
-                imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(old_poke[1]/self.target_mon[3])*100}_C{iter}.png', old_poke[0])
+                imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(old_poke[1]/self.target_mon[3])*100}_C{iter}.png', cp.asnumpy(old_poke[0]))
         
         self.team.clear()
         

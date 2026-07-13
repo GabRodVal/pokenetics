@@ -3,6 +3,7 @@ from random import randint, choices, sample, uniform, seed
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+import cupy as cp
 import imageio.v3 as imio
 import imageio
 from PIL import Image, ImageFile, ImageOps
@@ -209,9 +210,9 @@ class PokeGenetics():
         if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - CoR: {stats[1] * 100:.2f}%/{self.crossover_rate} | Mut: {stats[2] * 100:.2f}%/{self.mutation_rate}% | Elt: {stats[3] * 100:.2f}%/{self.elitism_rate}% | Pop: {stats[0]}/{self.pop_size}')
         if self.verbose: print(f'{max(len(str(self.cur_gen)), 3) * ' '}      - Rodadas sem progresso: {self.no_change_turns} (Max. {self.no_change_max}) | Tot. {self.no_change_total}\033[0m')
 
-        self.h_scores.append(((self.cur_score/target_mon[3]) * 100))
-        self.true_scores.append((t_score/(255 * 3 * (target_mon[2].shape[0]) * (target_mon[2].shape[1]))) * 100)
-           
+        self.h_scores.append(float((self.cur_score/target_mon[3]) * 100))
+        self.true_scores.append(float((t_score/(255 * 3 * (target_mon[2].shape[0]) * (target_mon[2].shape[1]))) * 100))
+                
         if self.cur_gen == 1:
             self.first_score = self.cur_score
         else:
@@ -234,49 +235,51 @@ class PokeGenetics():
             factor = math.ceil(256/most_fit_mon[0].shape[0])
 
             self.top_league.append(most_fit_mon)
-            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}g_{(most_fit_mon[1]/target_mon[3])*100:.2f}.png', utils.resize_by_factor(most_fit_mon[0], factor))
-            most_fit_t_sim = utils.get_similarity_sprite(target_mon[2],most_fit_mon[0])
-            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_sim.png', utils.resize_by_factor(most_fit_t_sim, factor))
+            #print(cp.asnumpy(utils.resize_by_factor(most_fit_mon[0], factor)).shape)
+            #print(type(cp.asnumpy(utils.resize_by_factor(most_fit_mon[0], factor))))
+            imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}g_{(most_fit_mon[1]/target_mon[3])*100:.2f}.png', cp.asnumpy(utils.resize_by_factor(most_fit_mon[0], factor)))
+            #most_fit_t_sim = utils.get_similarity_sprite(target_mon[2],most_fit_mon[0])
+            #imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_sim.png', cp.asnumpy(utils.resize_by_factor(most_fit_t_sim, factor)))
 
             
             if self.score_type != 'Grayscale'.lower() and self.score_type != 'BW'.lower():
                 most_fit_difference = utils.get_difference_sprite(target_mon[2],most_fit_mon[0])
-                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_diff.png', utils.resize_by_factor(most_fit_difference, factor))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_diff.png', cp.asnumpy(utils.resize_by_factor(most_fit_difference, factor)))
             
             elif self.score_type == 'Grayscale'.lower() or self.score_type=='RGBorders_GBW'.lower():
-                most_fit_gray = utils.to_grayscale(np.copy(most_fit_mon[0]))
-                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_gray.png', utils.resize_by_factor(most_fit_gray, factor))
-                most_fit_difference = utils.get_difference_sprite(utils.to_rgba(utils.to_grayscale(np.copy(target_mon[2]))), utils.to_rgba(most_fit_gray))
-                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_graydiff.png', utils.resize_by_factor(most_fit_difference, factor))
+                most_fit_gray = utils.to_grayscale(cp.copy(most_fit_mon[0]))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_gray.png', cp.asnumpy(utils.resize_by_factor(most_fit_gray, factor)))
+                most_fit_difference = utils.get_difference_sprite(utils.to_rgba(utils.to_grayscale(cp.copy(target_mon[2]))), utils.to_rgba(most_fit_gray))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_graydiff.png', cp.asnumpy(utils.resize_by_factor(most_fit_difference, factor)))
             
             elif self.score_type == 'BW'.lower() or self.score_type=='RGBorders_GBW'.lower() or self.score_type=='Mixed'.lower():
-                most_fit_bw = utils.to_black_n_white(np.copy(most_fit_mon[0]))
-                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_bw.png', utils.resize_by_factor(most_fit_bw, factor))
-                most_fit_difference = utils.get_difference_sprite(utils.to_rgba(utils.to_black_n_white(np.copy(target_mon[2]))), utils.to_rgba(most_fit_bw))
-                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_bwdiff.png', utils.resize_by_factor(most_fit_difference, factor))
+                most_fit_bw = utils.to_black_n_white(cp.copy(most_fit_mon[0]))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_bw.png', cp.asnumpy(utils.resize_by_factor(most_fit_bw, factor)))
+                most_fit_difference = utils.get_difference_sprite(utils.to_rgba(utils.to_black_n_white(cp.copy(target_mon[2]))), utils.to_rgba(most_fit_bw))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_bwdiff.png', cp.asnumpy(utils.resize_by_factor(most_fit_difference, factor)))
                 
             #if self.posterize:
-            #    most_fit_post =  utils.posterize(np.copy(most_fit_mon[0]))
+            #    most_fit_post =  utils.posterize(cp.copy(most_fit_mon[0]))
             #    imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_post.png', utils.resize_by_factor(most_fit_post, factor))
-            #    most_fit_difference = utils.get_difference_sprite(utils.posterize(np.copy(target_mon[2])), most_fit_post)
+            #    most_fit_difference = utils.get_difference_sprite(utils.posterize(cp.copy(target_mon[2])), most_fit_post)
             #    imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postdiff.png', utils.resize_by_factor(most_fit_difference, factor))
             #    
             #if self.posterize_hard:
-            #    most_fit_post4 =  utils.posterize_hard(np.copy(most_fit_mon[0]))
+            #    most_fit_post4 =  utils.posterize_hard(cp.copy(most_fit_mon[0]))
             #    imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_post4.png', utils.resize_by_factor(most_fit_post4 , factor))
-            #    most_fit_post_4_difference = utils.get_difference_sprite(utils.posterize_hard(np.copy(target_mon[2])), most_fit_post4)
+            #    most_fit_post_4_difference = utils.get_difference_sprite(utils.posterize_hard(cp.copy(target_mon[2])), most_fit_post4)
             #    imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_post4diff.png', utils.resize_by_factor(most_fit_post_4_difference, factor))
                 
             if self.score_type == 'RGBorders'.lower() or self.score_type=='RGBorders_GBW'.lower() or self.score_type=='borders_only'.lower():
-                most_fit_border1, most_fit_border2 = utils.get_raw_border_sprites(np.copy(most_fit_mon[0]), True)
-                most_fit_border = np.hstack((most_fit_border1,most_fit_border2))
-                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_borders.png', utils.resize_by_factor(most_fit_border , factor))
+                most_fit_border1, most_fit_border2 = utils.get_raw_border_sprites(cp.copy(most_fit_mon[0]), True)
+                most_fit_border = cp.hstack((most_fit_border1,most_fit_border2))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_borders.png', cp.asnumpy(utils.resize_by_factor(most_fit_border , factor)))
                 
             if self.score_type == 'Binposter':
-                most_fit_post =  utils.posterize_binary(np.copy(most_fit_mon[0]))
-                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postbin.png', utils.resize_by_factor(most_fit_post, factor))
-                most_fit_difference = utils.get_difference_sprite(utils.posterize(np.copy(target_mon[2])), most_fit_post)
-                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postbindiff.png', utils.resize_by_factor(most_fit_difference, factor))
+                most_fit_post =  utils.posterize_binary(cp.copy(most_fit_mon[0]))
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postbin.png', cp.asnumpy(utils.resize_by_factor(most_fit_post, factor)))
+                most_fit_difference = utils.get_difference_sprite(utils.posterize(cp.copy(target_mon[2])), most_fit_post)
+                imio.imwrite(f'{self.base_dir}/best/{self.cur_gen}_postbindiff.png', cp.asnumpy(utils.resize_by_factor(most_fit_difference, factor)))
         
         if len(self.top_league) > 1800:
                 self.top_league = self.top_league[:900] + self.top_league[-900:]
@@ -286,13 +289,13 @@ class PokeGenetics():
         GOAT_mon = self.party.get_GOAT_pokemon()
         size_fac = math.floor(512/GOAT_mon[0].shape[0])
         target = self.party.get_target_pokemon()
-        imio.imwrite(f'{self.base_dir}/DIY_{target[1]}.png', utils.resize_by_factor(GOAT_mon[0],size_fac))
+        imio.imwrite(f'{self.base_dir}/DIY_{target[1]}.png', cp.asnumpy(utils.resize_by_factor(GOAT_mon[0],size_fac)))
         self.top_league.append(GOAT_mon)
         
         for iter in range(len(self.top_league)):
         #    imio.imwrite(f'{self.base_dir}/best/{iter+1}_s{self.top_league[iter][1]}.png', self.top_league[iter][0])
 
-            champ_img = np.array(self.top_league[iter][0])
+            champ_img = cp.array(self.top_league[iter][0])
             mk = champ_img[:, :, 3] == 0
             champ_img[mk] =[255,255,255,255]
             mk2 = champ_img[:, :, 3] < 255
@@ -300,13 +303,13 @@ class PokeGenetics():
 
             
             champ_img = utils.resize_by_factor(champ_img, size_fac)
-            champ_img = Image.fromarray(champ_img).convert("RGB")
+            champ_img = Image.fromarray(cp.asnumpy(champ_img)).convert("RGB")
 
             if iter == 0 or iter == (len(self.top_league)-1):
                 for _ in itertools.repeat(None, max(min(10, math.ceil(len(self.top_league)/10)), 20)):
-                    top_gif.append(champ_img)
+                    top_gif.append(cp.asnumpy(champ_img))
             else:
-                top_gif.append(champ_img)
+                top_gif.append(cp.asnumpy(champ_img))
 
         imageio.mimsave(f'{self.base_dir}/best_mon.gif', top_gif, format='GIF', duration=80, loop=0)
     
@@ -333,10 +336,11 @@ class PokeGenetics():
         mut_fig = plt.subplot2grid(shape=(12,16), loc=(8, 10), colspan=6, rowspan=2)
         time_fig = plt.subplot2grid(shape=(12,16), loc=(10, 10), colspan=6, rowspan=2)
 
-        plt_fig = target_mon[2]
+        plt_fig = cp.asnumpy(target_mon[2])
         mk = plt_fig[:, :, 3] == 0
         plt_fig[mk] = [255,255,255,255]
         plt_fig[:, :, 3] = 64
+
 
         main_fig.set_ylabel("Precision Score")
         main_fig.set_xlabel(f"Generation - Avg {mean(self.h_scores):.1f}")
@@ -495,12 +499,18 @@ class PokeGenetics():
         self.register_stats()
 
         for _ in range(self.max_gen):
+            if debug:gen_start = datetime.datetime.now().timestamp()
+            
             if debug:print('Imgs gen start: OK')
             if self.save_all_imgs: self.create_dir(cur_dir=f'{self.base_dir}/gen_{self.cur_gen}')
+            if debug:gen_create_dir = datetime.datetime.now().timestamp()
+            if debug:print(f'Criação de diretorio:{gen_create_dir - gen_start}s')
             
             if debug:print('Imgs save_all_imgs: OK')
             if self.auto_regulate:
                 self.party.regulate_self()
+            if debug:gen_regulate = datetime.datetime.now().timestamp()
+            if debug:print(f'Autoregulate:{gen_regulate - gen_create_dir}s')
             
             if (self.cur_score/target_mon[3]) > 0.985 and self.score_type != 'mixed':
                 self.quit_loop = True
@@ -509,10 +519,21 @@ class PokeGenetics():
             if debug:print('Break loop: OK')
             
             self.party.apply_fitness()
+            if debug:gen_fitness = datetime.datetime.now().timestamp()
+            if debug:print(f'Fitness:{gen_fitness - gen_regulate}s')
+            
             self.party.populate_new_gen()
+            if debug:gen_populate = datetime.datetime.now().timestamp()
+            if debug:print(f'Populate:{gen_populate - gen_fitness}s')
+            
             self.party.score_party()
+            if debug:gen_scr = datetime.datetime.now().timestamp()
+            if debug:print(f'Score:{gen_scr - gen_populate}s')
+            
             self.cur_gen = self.party.get_cur_gen()
             self.register_stats()
+            if debug:gen_reg = datetime.datetime.now().timestamp()
+            if debug:print(f'Score:{gen_reg - gen_scr}s')
             
 
             
