@@ -2,6 +2,7 @@ from enum import Enum
 from random import randint, choices, sample, uniform, seed
 import numpy as np
 import cupy as cp
+import cupyx.scipy.ndimage as scimg
 import math
 from PIL import Image, ImageFile, ImageOps
 import matplotlib.colors as colors
@@ -62,79 +63,55 @@ class Crossover():
 
     
     #botar a porra toda pra parir gemeos
-    def crossover_mix_opacity_essential(self, img_a, img_b):
+    def crossover_mix_opacity_essential(self, img_a, img_b):##
+        child_a = cp.copy(img_a)
+        child_b = cp.copy(img_b)
+
+        if randint(0,2) == 2:
+            op_con = uniform(0.25, 0.75)
+        else:
+            op_con = 0.55
+        
+        #mkal = img_a[:,:,3] == 255
+        #mkbl = img_b[:,:,3] == 255
+        
+        mk_alpha_ao = (img_a[:,:,3] == 255) & (img_b[:,:,3] != 255)
+        child_b[mk_alpha_ao] = img_a[mk_alpha_ao]
+        mk_alpha_bo = (img_b[:,:,3] == 255) & (img_a[:,:,3] != 255)
+        child_a[mk_alpha_bo] = img_b[mk_alpha_bo]
+        
+        mkx = (img_a[:,:,3] == 255) & (img_b[:,:,3] == 255)
+        child_a[mkx] = (((cp.copy(img_a) * op_con) + (cp.copy(img_b) * (1.0 - op_con))).astype(cp.uint8))[mkx]
+        child_b[mkx] = (((cp.copy(img_b) * op_con) + (cp.copy(img_a) * (1.0 - op_con))).astype(cp.uint8))[mkx]
+
+        return child_a, child_b
+
+
+    def crossover_mix_opacity_minimize(self, img_a, img_b):##
         child_a = cp.zeros_like(img_a)
         child_b = cp.zeros_like(img_b)
 
-        if randint(0,4) == 4:
+        if randint(0,2) == 2:
             op_con = uniform(0.25, 0.75)
         else:
             op_con = 0.55
             
-        child_a = (cp.copy(img_a) * op_con) + (cp.copy(img_b) * (1.0 - op_con))
-        child_b = (cp.copy(img_b) * op_con) + (cp.copy(img_a) * (1.0 - op_con))
+        mkx = (img_a[:,:,3] == 255) & (img_b[:,:,3] == 255)
+        child_a[mkx] = ((cp.copy(img_a) * op_con) + (cp.copy(img_b) * (1.0 - op_con)).astype(cp.uint8))[mkx]
+        child_b[mkx] = ((cp.copy(img_b) * op_con) + (cp.copy(img_a) * (1.0 - op_con)).astype(cp.uint8))[mkx]
 
-        '''for j in range(0, img_a.shape[0]):
-            for k in range(0, img_a.shape[1]):
-                    if cp.array_equal(img_a[j][k], img_b[j][k]):
-                        continue
-                    elif img_a[j][k][3] == 0 and img_b[j][k][3] != 0:
-                        child_a[j][k] = img_b[j][k]
-                    elif img_b[j][k][3] == 0 and img_a[j][k][3] != 0:
-                        child_b[j][k] = img_a[j][k]
-                    else:
-                        child_a[j][k] = cp.ceil(cp.add(cp.multiply(img_a[j][k], op_con), cp.multiply(img_b[j][k], 1-op_con)))
-                        child_b[j][k] = cp.ceil(cp.add(cp.multiply(img_b[j][k], op_con), cp.multiply(img_a[j][k], 1-op_con)))'''
-                        
-        mkal = img_a[:,:,3] == 255
-        mkin = child_a[:,:,3] < 255
-        child_a[mkin] = 0
-        child_a[mkal,3] = 255
         
+        #mkal = child_a[:,:,3] > 0
+        #child_a[mkal,3] = 255
         
-        mkbl = img_b[:,:,3] == 255
-        mkim = child_b[:,:,3] < 255
-        child_b[mkim] = 0
-        child_b[mkbl,3] = 255
-
-        return child_a, child_b
-
-
-    def crossover_mix_opacity_minimize(self, img_a, img_b):
-        child_a = cp.copy(img_a)
-        child_b = cp.copy(img_b)
-
-        if randint(0,4) == 4:
-            op_con = uniform(0.25, 0.75)
-        else:
-            op_con = 0.5
-            
-        child_a = (cp.copy(img_a) * op_con) + (cp.copy(img_b) * (1.0 - op_con))
-        child_b = (cp.copy(img_b) * op_con) + (cp.copy(img_a) * (1.0 - op_con))
-
-        '''for j in range(0, img_a.shape[0]):
-            for k in range(0, img_a.shape[1]):
-                    if cp.array_equal(img_a[j][k], img_b[j][k]):
-                        continue
-                    elif img_a[j][k][3] == 0 and img_b[j][k][3] != 0:
-                        child_b[j][k] = img_a[j][k]
-                    elif img_b[j][k][3] == 0 and img_a[j][k][3] != 0:
-                        child_a[j][k] = img_b[j][k]
-                    else:
-                        child_a[j][k] = cp.ceil(cp.add(cp.multiply(img_a[j][k], op_con), cp.multiply(img_b[j][k], 1-op_con)))
-                        child_b[j][k] = cp.ceil(cp.add(cp.multiply(img_b[j][k], op_con), cp.multiply(img_a[j][k], 1-op_con)))'''
-        
-        mkal = child_a[:,:,3] > 0
-        child_a[mkal,3] = 255
-        
-        mkbl = child_b[:,:,3] > 0
-        child_b[mkbl,3] = 255
+        #mkbl = child_b[:,:,3] > 0
+        #child_b[mkbl,3] = 255
 
         return child_a, child_b
 
 
 
-    def crossover_swap_pixels(self, img_a, img_b):
+    def crossover_swap_pixels(self, img_a, img_b):##
         
         
         #b_arr = cp.random.randint(0,2, size=(img_a.shape[0],img_a.shape[1]))
@@ -148,16 +125,9 @@ class Crossover():
         child_b[mk] = img_a[mk]
 
 
-        '''for j in range(0, img_a.shape[0]):
-            for k in range(0, img_a.shape[1]):
-                pix = randint(0,1)
-                if pix:
-                    child_a[j][k] = cp.copy(img_b[j][k])
-                    child_b[j][k] = cp.copy(img_a[j][k])'''
-
         return child_a, child_b
 
-    def crossover_swap_serial_pixels(self, img_a, img_b):
+    '''def crossover_swap_serial_pixels(self, img_a, img_b):
         child_a = cp.copy(img_a)
         child_b = cp.copy(img_b)
 
@@ -171,10 +141,10 @@ class Crossover():
                     child_a[j][k] = cp.copy(img_b[j][k])
                     child_b[j][k] = cp.copy(img_a[j][k])
 
-        return child_a, child_b
+        return child_a, child_b'''
     
     #CHEAT
-    def crossover_swap_cheater_rgba(self, img_a, img_b):
+    '''def crossover_swap_cheater_rgba(self, img_a, img_b):
         child_a = cp.copy(img_a)
         child_b = cp.copy(img_b)
 
@@ -185,11 +155,11 @@ class Crossover():
                     child_a[j][k] = cp.copy(img_b[j][k])
                     child_b[j][k] = cp.copy(img_a[j][k])                    
         
-        return child_a, child_b
+        return child_a, child_b'''
     
-
+    #CrossOver slice?
     #bisect rand
-    def crossover_bisect(self, img_a, img_b):
+    def crossover_bisect(self, img_a, img_b):##
         if randint(0,1):
             if randint(0,1):
                 v_half = img_a.shape[0] // 2
@@ -203,18 +173,18 @@ class Crossover():
             #h_cut = 0
             #v_cut = 0
             if randint(0,1):
-                v_cut = randint(int(img_a.shape[0]*0.2), int(img_a.shape[0]*0.8))
+                v_cut = randint(int(img_a.shape[0]*0.1), int(img_a.shape[0]*0.9))
                 child_a = cp.vstack((img_a[:v_cut], img_b[v_cut:]))
                 child_b = cp.vstack((img_b[:v_cut], img_a[v_cut:]))
             else:
-                h_cut =  randint(int(img_a.shape[1]*0.2), int(img_a.shape[1]*0.8))
+                h_cut =  randint(int(img_a.shape[1]*0.1), int(img_a.shape[1]*0.9))
                 child_a = cp.hstack((img_a[:, :h_cut], img_b[:, h_cut:]))
                 child_b = cp.hstack((img_b[:, :h_cut], img_a[:, h_cut:]))
 
         return child_a, child_b
     
     # multisect
-    def crossover_multisect(self, img_a, img_b):
+    def crossover_multisect(self, img_a, img_b):##
         if img_a.shape != img_b.shape:
             img_b = cp.resize(img_b, img_a.shape)
 
@@ -249,7 +219,7 @@ class Crossover():
 
         return child_a, child_b
 
-    def crossover_swap_chunks(self, img_a, img_b):
+    def crossover_swap_chunks(self, img_a, img_b):##
         
         if img_a.shape[0] % 2 == 0:
                 v_half = img_a.shape[0] // 2
@@ -284,7 +254,7 @@ class Crossover():
         else:
             return img_a, img_b
 
-    def crossover_swap_comp(self, img_a, img_b):
+    def crossover_swap_comp(self, img_a, img_b):##
         comp_f = True
         child_a = cp.copy(img_a)
         child_b = cp.copy(img_b)
@@ -352,10 +322,9 @@ class Crossover():
         
         return child_a, child_b
 
-    def crossover_swap_squares(self, img_a, img_b):
+    def crossover_swap_squares(self, img_a, img_b):##
         comp_f = True
-        child_a = cp.copy(img_a)
-        child_b = cp.copy(img_b)
+        
         while comp_f:
             sp = randint(2,5)
                 
@@ -377,59 +346,71 @@ class Crossover():
                         sq = (5,5)
                         comp_f = False
         
-
-        for j in range(0, img_a.shape[0], sq[0]):
+        
+        #mini_child_a = utils.resize_by_factor(cp.copy(img_a), (1.0/sq[0]))
+        #mini_child_b = utils.resize_by_factor(cp.copy(img_b), (1.0/sq[0]))
+        b_size = (int(img_a.shape[0]/sq[0]), int(img_a.shape[1]/sq[1]))
+        bool_arr = cp.random.choice([False, True], size=b_size)
+        b_arr = scimg.zoom(bool_arr, [sq[0],sq[1]], mode='nearest', prefilter=False, order=0)
+        #scimg.zoom(bool_arr, [sq[0],sq[1]], mode='nearest', prefilter=False, order=0)
+        #b_arr = utils.resize_by_factor(bool_arr, sq[0])
+        mk = b_arr[:,:] == True
+        
+        child_a = cp.copy(img_a)
+        child_b = cp.copy(img_b)
+        child_a[mk] = img_b[mk]
+        child_b[mk] = img_a[mk]
+        
+        
+        '''for j in range(0, img_a.shape[0], sq[0]):
             for k in range(0, img_a.shape[1], sq[1]):
                 pix = randint(0,1)
                 if pix:
                     child_a[j:(j+sq[0]), k:(k+sq[1])] = cp.copy(img_b[j:(j+sq[0]),k:(k+sq[1])])
-                    child_b[j:(j+sq[0]), k:(k+sq[1])] = cp.copy(img_a[j:(j+sq[0]),k:(k+sq[1])])
+                    child_b[j:(j+sq[0]), k:(k+sq[1])] = cp.copy(img_a[j:(j+sq[0]),k:(k+sq[1])])'''
 
         return child_a, child_b
         
     def crossover_swap_even(self, img_a, img_b):
         child_a = cp.copy(img_a)
         child_b = cp.copy(img_b)
-        swap = False
-        
+
         if randint(0,1):
-            if randint(0,1):
-                for j in range(0, img_a.shape[0]):
-                    for k in range(0, img_a.shape[1]):
-                        if swap:
-                            child_a[j][k] = cp.copy(img_a[j][k])
-                            child_b[j][k] = cp.copy(img_b[j][k])
-                        else:
-                            child_a[j][k] = cp.copy(img_b[j][k])
-                            child_b[j][k] = cp.copy(img_a[j][k])
-                            
-                    swap = not(swap)
-            else:
-                for j in range(0, img_a.shape[0]):
-                    for k in range(0, img_a.shape[1]):
-                        if swap:
-                            child_a[k][j] = cp.copy(img_a[k][j])
-                            child_b[k][j] = cp.copy(img_b[k][j])
-                        else:
-                            child_a[k][j] = cp.copy(img_b[k][j])
-                            child_b[k][j] = cp.copy(img_a[k][j])
-                    swap = not(swap)
+            child_a[:,0::2] = img_b[:,0::2]
+            child_b[:,0::2] = img_a[:,0::2]
         else:
-            for j in range(0, img_a.shape[0]):
-                    for k in range(0, img_a.shape[1]):
-                        swap = not(swap)
-                        if swap:
-                            child_a[j][k] = cp.copy(img_a[j][k])
-                            child_b[j][k] = cp.copy(img_b[j][k])
-                        else:
-                            child_a[j][k] = cp.copy(img_b[j][k])
-                            child_b[j][k] = cp.copy(img_a[j][k])
-                    swap = not(swap)
+            child_a[0::2,:] = img_b[0::2,:]
+            child_b[0::2,:] = img_a[0::2,:]
         
         return child_a, child_b
     
     def crossover_swap_colors(self, img_a, img_b):
-        def get_sorted_colors(img):
+        
+        def unique_colors_wrkarnd(pk):
+            mk = pk[:,:,3] != 0
+            gn = cp.copy(pk[mk, :3])
+            flat = gn.reshape(-1, gn.shape[-1])
+            #if len(flat.shape) != 2:
+            #    raise ValueError("Input array must be 2D.")
+            sortarr = flat[cp.lexsort(flat.T[::-1])]
+            mask = cp.empty(flat.shape[0], dtype=cp.bool_)
+            mask[0] = True
+            mask[1:] = cp.any(sortarr[1:] != sortarr[:-1], axis=1)
+            return sortarr[mask]
+
+        child_a = cp.copy(img_a)
+        child_b = cp.copy(img_b)
+
+        unique_1 = unique_colors_wrkarnd(child_a)
+        unique_2 = unique_colors_wrkarnd(child_b)
+
+        for it in range(min(len(unique_1), len(unique_2))):
+            mk_a = (child_a[:,:,0] == unique_1[it][0])&(child_a[:,:,1] == unique_1[it][1])&(child_a[:,:,2] == unique_1[it][2])
+            child_a[mk_a,:3] = unique_2[it][0],unique_2[it][1],unique_2[it][2]
+            mk_b = (child_b[:,:,0] == unique_2[it][0])&(child_b[:,:,1] == unique_2[it][1])&(child_b[:,:,2] == unique_2[it][2])
+            child_b[mk_b,:3] = unique_1[it]
+        
+        '''def get_sorted_colors(img):
 
             img = list(Image.fromarray(cp.asnumpy(img)).getdata())
 
@@ -480,11 +461,11 @@ class Crossover():
                 to_hex_b = colors.to_hex((r/255,g/255,b/255,a/255), keep_alpha=True)
                 if to_hex_b in color_eq:
                     r, g, b, a = colors.to_rgba(color_eq[to_hex_b])
-                    child_b[j][k] = (cp.int16(r * 255),cp.int16(g * 255),cp.int16(b * 255),cp.int16(a * 255))
+                    child_b[j][k] = (cp.int16(r * 255),cp.int16(g * 255),cp.int16(b * 255),cp.int16(a * 255))'''
 
         return child_a, child_b
     
-    def crossover_swap_channels(self, img_a, img_b):
+    def crossover_swap_channels(self, img_a, img_b):##
         child_a = cp.copy(img_a)
         child_b = cp.copy(img_b)
         '''ra = img_a[:, :, 0]
@@ -521,7 +502,16 @@ class Crossover():
         child_a = cp.copy(img_a)
         child_b = cp.copy(img_b)
         
-        edge_a1, edge_a2 = utils.find_edges(img_a)
+        ed_a = utils.to_edges(cp.copy(img_a))
+        ed_b = utils.to_edges(cp.copy(img_b))
+        
+        mk_a = ed_a[:,:] == 255
+        mk_b = ed_b[:,:] == 255
+        
+        child_a[mk_b] = img_b[mk_b]
+        child_b[mk_a] = img_a[mk_a]
+        
+        '''edge_a1, edge_a2 = utils.find_edges(img_a)
         edge_b1, edge_b2 = utils.find_edges(img_b)
         
         if randint(0,1):
@@ -537,7 +527,7 @@ class Crossover():
                     if edge_a2[i][j]:
                         child_b[i][j] = img_a[i][j].copy()
                     if edge_b2[i][j]:
-                        child_a[i][j] = img_b[i][j].copy()
+                        child_a[i][j] = img_b[i][j].copy()'''
         
         return child_a, child_b
     # crossover_subtract
@@ -594,10 +584,16 @@ class Crossover():
         return child_a, child_b
     
     def crossover_dark_n_light(self, img_a, img_b):
-        child_a = cp.zeros_like(img_a)
-        child_b = cp.zeros_like(img_b)
+        child_a = cp.copy(img_a)
+        child_b = cp.copy(img_b)
+        
+        mk_light = (img_a[:,:,0]+img_a[:,:,1]+img_a[:,:,2]) < (img_b[:,:,0]+img_b[:,:,1]+img_b[:,:,2])
+        #mk_light_b =
+        child_a[mk_light] = img_b[mk_light]
+        child_b[mk_light] = img_a[mk_light]
+        
 
-        for j in range(0, img_a.shape[0]):
+        '''for j in range(0, img_a.shape[0]):
             for k in range(0, img_a.shape[1]):
                 sum_a = img_a[j][k].sum()
                 sum_b = img_b[j][k].sum()
@@ -607,15 +603,25 @@ class Crossover():
                     child_b[j][k] = cp.copy(img_a[j][k])
                 else:
                     child_a[j][k] = cp.copy(img_a[j][k])
-                    child_b[j][k] = cp.copy(img_b[j][k])
+                    child_b[j][k] = cp.copy(img_b[j][k])'''
 
         return child_a, child_b
     
     def crossover_contrast(self, img_a, img_b):
-        child_a = cp.zeros_like(img_a)
-        child_b = cp.zeros_like(img_b)
+        child_a = cp.copy(img_a)
+        child_b = cp.copy(img_b)
+        
+        mk_light = img_a[:,:,:] < img_b[:,:,:]
+        mk_alp = (img_a[:,:,3] == 255) | (img_b[:,:,3] == 255)
+        #mk_alp_a = img_a[:,:,3] == 255
+        #mk_alp_b = img_b[:,:,3] == 255
+        #mk_light_b =
+        child_a[mk_light] = img_b[mk_light]
+        child_a[mk_alp,3] = 255
+        child_b[mk_light] = img_a[mk_light]
+        child_b[mk_alp,3] = 255
 
-        for j in range(0, img_a.shape[0]):
+        '''for j in range(0, img_a.shape[0]):
             for k in range(0, img_a.shape[1]):
                 for l in range(0, img_a.shape[2]):
                     if img_a[j][k][l] >= img_b[j][k][l]:
@@ -623,13 +629,13 @@ class Crossover():
                         child_b[j][k][l] = cp.copy(img_a[j][k][l])
                     else:
                         child_a[j][k][l] = cp.copy(img_a[j][k][l])
-                        child_b[j][k][l] = cp.copy(img_b[j][k][l])
+                        child_b[j][k][l] = cp.copy(img_b[j][k][l])'''
 
         return child_a, child_b
     
     
     
-    def crossover_checker_stack(self, img_a, img_b):
+    '''def crossover_checker_stack(self, img_a, img_b):
         #big_child = cp.zeros((img_a.shape[0]*2,img_a.shape[1]*2,img_a.shape[2]))
         child_a_v1 = cp.vstack((cp.copy(img_a),cp.copy(img_b)))
         child_a_v2 = cp.vstack((cp.copy(img_b),cp.copy(img_a)))
@@ -648,11 +654,11 @@ class Crossover():
         mkb = (child_b[:,:,3] > 0) & (child_b[:,:,3] < 255)
         child_b[mkb,3] = 255
         
-        return child_a.astype(cp.uint8), child_b.astype(cp.uint8)
+        return child_a.astype(cp.uint8), child_b.astype(cp.uint8)'''
     
     
     #big_child = cp.zeros((img_a.shape[0]*2,img_a.shape[1]*2,img_a.shape[2]))
-    def crossover_swap_squared(self, img_a, img_b):
+    '''def crossover_swap_squared(self, img_a, img_b):
         big_child = cp.zeros((img_a.shape[0]*2,img_a.shape[1]*2,img_a.shape[2]))
 
         for j in range(0, img_a.shape[0]):
@@ -671,9 +677,9 @@ class Crossover():
         mkb = (child_b[:,:,3] > 0) & (child_b[:,:,3] < 255)
         child_b[mkb,3] = 255
         
-        return cp.array(child_a).astype(cp.uint8), cp.array(child_b).astype(cp.uint8)
+        return cp.array(child_a).astype(cp.uint8), cp.array(child_b).astype(cp.uint8)'''
     
-    def crossover_mix_subtract(self, img_a, img_b):
+    def crossover_mix_subtract(self, img_a, img_b): ##
         child_a = cp.zeros_like(img_a)
         child_b = cp.zeros_like(img_b)
 
@@ -684,13 +690,13 @@ class Crossover():
         
         return child_a, child_b
         
-    def crossover_difference(self, img_a, img_b):
+    def crossover_difference(self, img_a, img_b): ##
         child_a = utils.get_difference_sprite(cp.copy(img_a),cp.copy(img_b))
         child_b = utils.get_difference_sprite(cp.copy(img_b),cp.copy(img_a))
         
         return child_a, child_b
     
-    def crossover_mix_fit(self, img_a, img_b):
+    '''def crossover_mix_fit(self, img_a, img_b):
         child_a = utils.fit_img(cp.copy(img_a))
         child_b = utils.fit_img(cp.copy(img_b))
         
@@ -704,70 +710,13 @@ class Crossover():
                 c_a, c_b = self.crossover_mix_subtract(child_a, child_b)
             case 3:
                 c_a, c_b = self.crossover_mix_bitwise(child_a, child_b)
-        return c_a, c_b
+        return c_a, c_b'''
     
-    def crossover_mix_bitwise(self, img_a, img_b):
+    def crossover_mix_bitwise(self, img_a, img_b): ##
         child_a = cp.bitwise_and(cp.copy(img_a), cp.copy(img_b))
         child_b = cp.bitwise_or(cp.copy(img_a), cp.copy(img_b))
         
         return child_a, child_b
-    
-    def crossover_mix_inbreeding(self, img_a, img_b):
-        child_x = cp.zeros_like(img_a)
-                
-        mkaa = img_a[:,:,3] > 0
-        mkbb = img_b[:,:,3] > 0
-        
-        child_x[mkbb,3] = 255
-        child_x[mkaa,3] = 255
-        mkx = child_x[:,:,3] > 0
-        
-        child_x[mkx,0:2] =  cp.add((cp.add((cp.copy(img_a[mkaa,0:2])//2),(cp.copy(img_b[mkaa,0:2])//2)).astype(cp.uint8))//2, (cp.add((cp.copy(img_a[mkbb,0:2])//2),(cp.copy(img_b[mkbb,0:2])//2)).astype(cp.uint8))//2).astype(cp.uint8)
-        
-        score = 0
-        for i in range(child_x.shape[0]):
-            for j in range(child_x.shape[1]):
-                if cp.array_equal(img_a[i][j], img_b[i][j]):
-                    score += (255 * 3)
-                    continue
-                elif img_a[i][j][3] == img_b[i][j][3] and img_a[i][j][3] == 0:
-                    score += (255 * 3)
-                    continue
-                elif img_a[i][j][3] != img_b[i][j][3]:
-                    continue
-                for l in range(3):
-                    score += 255 - abs(cp.uint16(img_a[i][j]) - img_b[i][j])
-            
-            
-            child_a = cp.copy(child_x)
-            child_b = cp.copy(child_x)
-                    
-        if score/(child_x.shape[0] * child_x.shape[1] * 3 * 255) >= 0.92:
-            a_mut = randint(1,5)
-            b_mut = randint(2,6)
-            for _ in range(a_mut):
-                child_a = mutation.Mutation.mutate(child_a)
-            for _ in range(b_mut):
-                child_a = mutation.Mutation.mutate(child_b)
-            
-            
-
-        '''for j in range(0, img_a.shape[0]):
-            for k in range(0, img_a.shape[1]):
-                    if cp.array_equal(img_a[j][k], img_b[j][k]):
-                        continue
-                    elif img_a[j][k][3] == 0 and img_b[j][k][3] != 0:
-                        child_a[j][k] = img_b[j][k]
-                    elif img_b[j][k][3] == 0 and img_a[j][k][3] != 0:
-                        child_b[j][k] = img_a[j][k]
-                    else:
-                        child_a[j][k] = cp.ceil(cp.add(cp.multiply(img_a[j][k], op_con), cp.multiply(img_b[j][k], 1-op_con)))
-                        child_b[j][k] = cp.ceil(cp.add(cp.multiply(img_b[j][k], op_con), cp.multiply(img_a[j][k], 1-op_con)))'''
-                        
-
-        return child_a, child_b
-        
-        
         
     # crossover: no-cross (as shrimple as that)
 
@@ -787,10 +736,10 @@ class Crossover():
             #    c_a, c_b = self.crossover_mix_opacity_full(img_a, img_b)
             case 'swap_simple':
                 c_a, c_b = self.crossover_swap_pixels(img_a, img_b)
-            case 'swap_serial':
-                c_a, c_b = self.crossover_swap_serial_pixels(img_a, img_b)
-            case 'swap_cheater_rgba':
-                c_a, c_b = self.crossover_swap_cheater_rgba(img_a, img_b)
+            #case 'swap_serial':
+            #    c_a, c_b = self.crossover_swap_serial_pixels(img_a, img_b)
+            #case 'swap_cheater_rgba':
+            #    c_a, c_b = self.crossover_swap_cheater_rgba(img_a, img_b)
             case 'bisect':
                 c_a, c_b  = self.crossover_bisect(img_a, img_b)
             case 'multisect':
@@ -815,10 +764,10 @@ class Crossover():
                 c_a, c_b = self.crossover_contrast(img_a, img_b)
             case 'mix_mini':
                 c_a, c_b = self.crossover_mix_opacity_minimize(img_a, img_b)
-            case 'checker_stack':
-                c_a, c_b = self.crossover_checker_stack(img_a, img_b)
-            case 'swap_squared':
-                c_a, c_b = self.crossover_swap_squared(img_a, img_b)
+            #case 'checker_stack':
+            #    c_a, c_b = self.crossover_checker_stack(img_a, img_b)
+            #case 'swap_squared':
+            #    c_a, c_b = self.crossover_swap_squared(img_a, img_b)
             case 'mix_subtract':
                 c_a, c_b = self.crossover_mix_subtract(img_a, img_b)
             case 'bitwise':
@@ -829,8 +778,8 @@ class Crossover():
                 c_a, c_b = self.crossover_swap_comp(img_a, img_b)
             case 'swap_squares':
                 c_a, c_b = self.crossover_swap_squares(img_a, img_b)
-            case 'mix_fit':
-                c_a, c_b = self.crossover_mix_fit(img_a, img_b)
+            #case 'mix_fit':
+            #    c_a, c_b = self.crossover_mix_fit(img_a, img_b)
             case 'no_cross':
                 c_a = img_a.copy()
                 c_b = img_b.copy()
@@ -852,11 +801,11 @@ class CrossoverType(Enum):
     ##  Mix - Métodos que mesclam pixels
     ALL = ['swap_simple','swap_serial','mix_essential','bisect','multisect','swap_colors','swap_channels','swap_binary','dark_n_light','contrast','mix_mini','swap_squared','mix_subtract','checker_stack','swap_chunks','swap_even','difference','swap_comp','swap_squares', 'mix_fit','swap_borders', 'bitwise']
 
-    GPU_READY = ['swap_simple', 'mix_essential', 'bisect','swap_comp','swap_channels','swap_chunks','multisect','difference','mix_mini','mix_subtract']#'bitwise'
+    GPU_READY = ['swap_simple', 'mix_essential', 'swap_even', 'bisect','swap_comp','swap_channels','swap_chunks','multisect','difference','mix_mini','mix_subtract','swap_squares', 'bitwise','swap_borders','dark_n_light','contrast']#
+    #count colors
+    NOT_GPU_READY = ['swap_serial','swap_binary','swap_squared','checker_stack', 'mix_fit','swap_colors']
     
-    NOT_GPU_READY = ['swap_serial','swap_colors','swap_binary','dark_n_light','contrast','swap_squared','checker_stack','swap_even','swap_squares', 'mix_fit','swap_borders']
-    
-    ESSENTIALS = ['swap_simple', 'mix_essential', 'bisect','swap_comp','mix_mini','swap_chunks' ]
+    ESSENTIALS = ['swap_simple', 'mix_essential', 'bisect','swap_comp','mix_mini','swap_chunks', 'bitwise','swap_borders','dark_n_light','contrast', 'swap_even' ]
     
     SWAP = ['swap_simple', 'swap_serial', 'swap_chunks', 'swap_squares', 'swap_comp', 'swap_even','swap_colors','swap_binary', 'bisect', 'multisect', 'swap_channels','swap_borders']
     

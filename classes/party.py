@@ -79,7 +79,8 @@ class Party():
         self.reg_pop = reg_pop
         self.regulate_type = regulate_type
         #
-        self.perserverance_rate = perseverance_rate
+        self.perseverance_rate = perseverance_rate
+        self.og_perseverance_rate = perseverance_rate
         #
         self.elitism = elitism
         self.pity = pity
@@ -89,7 +90,7 @@ class Party():
         else:
             self.elitism_rate = 0
         self.og_elitism_rate = self.elitism_rate
-        self.best_mon = []
+        self.best_mon = [[],1,1]
         self.elite_couple = elite_couple
         #
         self.fitness_rate = self.og_pop_size
@@ -114,7 +115,7 @@ class Party():
         stats.append(self.mutation_rate)
         stats.append(self.elitism_rate)
         stats.append(self.fitness_rate)
-
+        stats.append(self.perseverance_rate)
         return stats
 
     def set_base_dir(self, base_dir):
@@ -129,10 +130,11 @@ class Party():
             else:
                 self.regulate_self_standard()
         
-        if (self.elitism_rate + self.crossover_rate) > 1.0:
-            reg_reg = 1.0/(self.elitism_rate + self.crossover_rate)
+        if (self.elitism_rate + self.crossover_rate + self.perseverance_rate) > 1.0:
+            reg_reg = 1.0/(self.elitism_rate + self.crossover_rate + self.perseverance_rate)
             self.elitism_rate = self.elitism_rate * reg_reg
             self.crossover_rate = self.crossover_rate * reg_reg
+            self.perseverance_rate = self.perseverance_rate * reg_reg
 
 
     def regulate_self_standard(self):
@@ -172,22 +174,24 @@ class Party():
     #apply min and max on base regulate function
     # Test instead of doubling waves using prime numbers
     def regulate_self_wavering(self):
-        #if self.reg_pop:
-        #    self.pop_size = min(max(round(self.og_pop_size + ((self.og_pop_size/2) * math.cos(math.radians(self.cur_gen * 3)))), 8), self.pokedex.get_pokedex_length())
+        if self.reg_pop:
+            self.pop_size = min(max(round(self.og_pop_size + ((self.og_pop_size/2) * math.cos(math.radians(self.cur_gen * 1)))), 8), self.pokedex.get_pokedex_length())
         # Test lower variation rate for crossover? 0.2? 0.25? 0.15? higher maybe? 0.33?
         self.crossover_rate = 0.64 + (0.16 * math.cos(math.radians(self.cur_gen * 2 )))
 
-        #if self.elitism:
-        #    self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate * 0.875) * math.sin(math.radians(self.cur_gen * 3))), 0.005), 0.5) 
+        if self.elitism:
+            self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate * 0.875) * math.sin(math.radians(self.cur_gen * 7))), 0.002), 0.05) 
         
-        self.mutation_rate = self.og_mutation_rate + ((self.og_mutation_rate/2) * math.sin(math.radians(self.cur_gen * 5))) + ((self.cur_gen/self.max_gen) * 0.225)
+        self.perseverance_rate = 0.24 + (0.16 * math.cos(math.radians(self.cur_gen * 5)))
+        
+        self.mutation_rate = self.og_mutation_rate + ((self.og_mutation_rate/2) * math.sin(math.radians(self.cur_gen * 3))) + ((self.cur_gen/self.max_gen) * 0.225)
 
     def get_new_crossover_mutation(self):
         selected = self.selection(2)
         mama = selected[0]
         papa = selected[1]
         #select max 3 crossover types for the rest of the turn
-        c_a, c_b = self.crossover.crossover_couple(mama[0], papa[0])
+        c_a, c_b = self.crossover.crossover_couple(cp.copy(mama[0]), cp.copy(papa[0]))
         #print('Crossovers_crossing: OK')
 
         if randint(0, 100_000) < (self.mutation_rate * 100_000):
@@ -198,36 +202,37 @@ class Party():
 
         return c_a, c_b
 
-    def royal_marriage(self, el_a, el_b):
+    '''def royal_marriage(self, el_a, el_b):
         c_a, c_b = self.crossover.crossover_couple(el_a, el_b)
-        print('AAAAAAAAAAAA')
         if self.elitism_mutation:
             if randint(0, 100_000) < (self.mutation_rate * 100_000):
                 c_a = self.mutation.mutate(c_a)
             if randint(0, 100_000) < (self.mutation_rate * 100_000):
                 c_b = self.mutation.mutate(c_b)
                 
-        return c_a, c_b
+        return c_a, c_b'''
 
     def create_target_ref_img(self):
         factor = math.floor(512/self.target_mon[2].shape[0])
         
+        
         imio.imwrite(f'{self.base_dir}/target.png', cp.asnumpy(utils.resize_by_factor(self.target_mon[2], factor)))
-        
-        border_1, border_2 = self.pokedex.get_borders()
-        imio.imwrite(f'{self.base_dir}/target_b1.png', cp.asnumpy(utils.resize_by_factor(border_1, factor)))
-        imio.imwrite(f'{self.base_dir}/target_b2.png', cp.asnumpy(utils.resize_by_factor(border_2, factor)))
-        
+        border = utils.to_rgba(utils.to_edges(cp.copy(self.target_mon[2])))
+        imio.imwrite(f'{self.base_dir}/target_border.png', cp.asnumpy(utils.resize_by_factor(border, factor)))
         gray_target = utils.to_rgba(utils.to_grayscale(cp.copy(self.target_mon[2])))
         imio.imwrite(f'{self.base_dir}/target_gray.png', cp.asnumpy(utils.resize_by_factor(gray_target, factor)))
         bw_target = utils.to_rgba(utils.to_black_n_white(cp.copy(self.target_mon[2])))
         imio.imwrite(f'{self.base_dir}/target_bw.png', cp.asnumpy(utils.resize_by_factor(bw_target, factor)))
         posterized_target = utils.posterize(cp.copy(self.target_mon[2]))
         imio.imwrite(f'{self.base_dir}/target_post.png', cp.asnumpy(utils.resize_by_factor(posterized_target, factor)))
-        hard_posterized_target = utils.posterize_hard(cp.copy(self.target_mon[2]))
-        imio.imwrite(f'{self.base_dir}/target_h_post.png', cp.asnumpy(utils.resize_by_factor(hard_posterized_target, factor)))
         binary_posterized_target = utils.posterize_binary(cp.copy(self.target_mon[2]))
-        imio.imwrite(f'{self.base_dir}/target_bin_post.png', cp.asnumpy(utils.resize_by_factor(binary_posterized_target, factor)))
+        imio.imwrite(f'{self.base_dir}/target_posterbin.png', cp.asnumpy(utils.resize_by_factor(binary_posterized_target, factor)))
+        sim_self_target = utils.get_similarity_sprite(cp.copy(self.target_mon[2]),cp.copy(self.target_mon[2]))
+        imio.imwrite(f'{self.base_dir}/target_self_sim.png', cp.asnumpy(utils.resize_by_factor(sim_self_target, factor)))
+        diff_self_target = utils.get_difference_sprite(cp.copy(self.target_mon[2]),cp.copy(self.target_mon[2]))
+        imio.imwrite(f'{self.base_dir}/target_self_diff.png', cp.asnumpy(utils.resize_by_factor(diff_self_target, factor)))
+
+
     
     def selection(self, select_num):
         apt = [t[2] for t in self.team]
@@ -266,18 +271,44 @@ class Party():
         return self.pokedex.get_target_pokemon()
 
     def get_GOAT_pokemon(self):
-        return self.best_mon.copy()
+        rep_goat = self.best_mon.copy()
+        return rep_goat
     
-    def selection_tournament(self):
-        choices
+    def set_GOAT_pokemon(self, goat):
+        if debug:print(f'GOAT atualizado: [{self.get_GOAT_pokemon()[1]:.2f}pts >>> {goat[1]:.2f}pts]')
+        rep_goat = goat.copy()
+        self.best_mon = rep_goat
     
     #maybe its time to implement steady state...
     def populate_new_gen(self):
         
         fittest_few = []
 
+        sorted_team = sorted(self.team, key=lambda x: x[1])
+        
+        if self.elitism:
+            most_fit_mon = sorted_team.pop()
+            if self.get_GOAT_pokemon()[1] < most_fit_mon[1]:
+                self.set_GOAT_pokemon(most_fit_mon)
+            
+            #if self.cur_gen % self.elitism_interval == 0:
+            #if True:
+            if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
+                    fittest_few.append(self.mutation.mutate(self.get_GOAT_pokemon()[0]))
+            else:
+                fittest_few.append(self.get_GOAT_pokemon()[0])
+            if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100}_SR0.png', cp.asnumpy(most_fit_mon[0]))
+            
+            if self.pity:
+                least_fit_mon = sorted_team[0].copy
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(least_fit_mon[1]/self.target_mon[3])*100}_FFF0.png', cp.asnumpy(least_fit_mon[0]))
+                new_gen.append(least_fit_mon[0])
+                if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
+                    new_gen.append(self.mutation.mutate(cp.copy(least_fit_mon[0])))
 
-        tournament = self.selection(cp.int16(self.pop_size*self.perserverance_rate))
+
+
+        tournament = self.selection(cp.int16(self.pop_size*self.perseverance_rate))
 
         
         new_gen = []
@@ -288,34 +319,13 @@ class Party():
         
         for it in range(len(tournament)):
             if randint(0, 100_000) < (self.mutation_rate * 100_000):
-                t_m = self.mutation.mutate(tournament[it][0])
+                t_m = self.mutation.mutate(cp.copy(tournament[it][0]))
                 new_gen.append(t_m)
             else:
-                new_gen.append(tournament[it][0])
+                new_gen.append(cp.copy(tournament[it][0]))
             if self.save_all_imgs:imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(tournament[it][1]/self.target_mon[3])*100}_WW{it}.png', cp.asnumpy(tournament[it][0]))
         
-        sorted_team = sorted(self.team, key=lambda x: x[1])
         
-        if self.elitism:
-            most_fit_mon = sorted_team.pop()
-            if len(self.best_mon) < 1:
-                self.best_mon = most_fit_mon.copy()
-            elif self.best_mon[1] < most_fit_mon[1]:
-                self.best_mon = most_fit_mon.copy()
-            
-            if self.cur_gen % self.elitism_interval == 0:
-                if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
-                        fittest_few.append(self.mutation.mutate(cp.copy(self.best_mon[0])))
-                else:
-                    fittest_few.append(cp.copy(self.best_mon[0]))
-                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100}_SR0.png', cp.asnumpy(most_fit_mon[0]))
-            
-            if self.pity:
-                least_fit_mon = sorted_team.pop(0)
-                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(least_fit_mon[1]/self.target_mon[3])*100}_FFF0.png', cp.asnumpy(most_fit_mon[0]))
-                new_gen.append(least_fit_mon[0])
-                if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
-                    new_gen.append(self.mutation.mutate(cp.copy(least_fit_mon[0])))
         
         
         for iter in range(len(self.team)):
@@ -323,18 +333,19 @@ class Party():
                 # or... just sort it once and pop shit until you're done
                 heir = sorted_team.pop()
                 if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000): #conditional?
-                    fittest_few.append(self.mutation.mutate(heir[0]))
+                    fittest_few.append(self.mutation.mutate(cp.copy(heir[0])))
                 else:
-                    fittest_few.append(heir[0])
+                    fittest_few.append(cp.copy(heir[0]))
                 
                 if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(heir[1]/self.target_mon[3])*100}_R{iter}.png', cp.asnumpy(heir[0]))
             elif self.save_all_imgs and len(sorted_team) > 0:
                 old_poke = sorted_team.pop()
                 imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(old_poke[1]/self.target_mon[3])*100}_C{iter}.png', cp.asnumpy(old_poke[0]))
         
-        self.team.clear()
+        self.team = []
         
-        if self.elitism and self.cur_gen % self.elitism_interval == 0:
+        #if self.elitism and self.cur_gen % self.elitism_interval == 0:
+        if True:
             for ft in fittest_few:
                 new_gen.append(ft)
                 
@@ -343,8 +354,7 @@ class Party():
         dupelen = len(new_gen)
         self.team = utils.format_team_pk_scr_fit(new_gen, dupes=self.dupes)
         unqlen = len(self.team)
-        new_gen.clear()
-        
+        #print(f'Best boi/girlie: {self.best_mon[1]}pts')
         #for pk in new_gen:
         #    self.team.append(pk)
             
@@ -362,7 +372,7 @@ class Party():
                 
     def score_party(self):
         for it in range(len(self.team)):
-            self.team[it][1] = self.pokedex.aval_target(self.target_mon[2], self.team[it][0])
+            self.team[it][1] = self.pokedex.aval_target(cp.copy(self.target_mon[2]), cp.copy(self.team[it][0]),is_ref_target=True)
         self.pokedex.close_colormap()
         self.cur_gen += 1
         

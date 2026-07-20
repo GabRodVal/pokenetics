@@ -208,8 +208,8 @@ class Fitness():
                 ('cos_double', utils.safe_weight(self.adaptable_smart_stats['cos_double']['total_num'], self.adaptable_smart_stats['cos_double']['success_num'] )),
                 ('sin_half', utils.safe_weight(self.adaptable_smart_stats['sin_half']['total_num'], self.adaptable_smart_stats['sin_half']['success_num'] )),
                 ('normalize', utils.safe_weight(self.adaptable_smart_stats['normalize']['total_num'], self.adaptable_smart_stats['normalize']['success_num'] )),
-                #('windowing', utils.safe_weight(self.adaptable_smart_stats['windowing']['total_num'], self.adaptable_smart_stats['windowing']['success_num'] )),
-                #('score', utils.safe_weight(self.adaptable_smart_stats['score']['total_num'], self.adaptable_smart_stats['score']['success_num'] )),
+                ('windowing', utils.safe_weight(self.adaptable_smart_stats['windowing']['total_num'], self.adaptable_smart_stats['windowing']['success_num'] )),
+                ('score', utils.safe_weight(self.adaptable_smart_stats['score']['total_num'], self.adaptable_smart_stats['score']['success_num'] )),
                     ]
             
             apt = [w[1] for w in pool]

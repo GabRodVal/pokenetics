@@ -55,15 +55,14 @@ def run_experiment(
                                                         auto_reg=(fi != 'none'),
                                                         fitness_type=k,
                                                         regulate_type=fi,
-                                                        reg_pop=False,
-                                                        elitism=g,
-                                                        elitism_interval=e_i,
-                                                        pity=True,
-                                                        elitism_mutation=h,
+                                                        reg_pop=True,
+                                                        elitism=True,
+                                                        pity=False,
                                                         crossover_rate=0.625,
-                                                        perseverance_rate=0.1875,
+                                                        perseverance_rate=0.185,
                                                         mutation_rate=0.08,
-                                                        elitism_rate=0.03125,
+                                                        elitism_rate=0.01275,
+                                                        elitism_mutation=True,
                                                         score_type=j,
                                                         crossover_type=e,
                                                         save_all_imgs=i,
@@ -90,17 +89,15 @@ def run_experiment(
     
 
 def main():
-    run_experiment(target_dex=["472"],
+    run_experiment(target_dex=["245"],
                    generations=['9'],
-                   pop_size=[512],
-                   crossover_type=[CrossoverType.ESSENTIALS.value],#['swap_borders']#, CrossoverType.BLEND.value],
-                   score_type=['rgba'],#'RGBA'],#'rgb_colour_distance'],#'Delta_E_2000'],#'Delta_E_Threshold','posterbin', 'Distance'],
+                   pop_size=[300],
+                   crossover_type=[CrossoverType.GPU_READY.value],#['swap_borders']#, CrossoverType.BLEND.value],
+                   score_type=['rgborders_sp'],#'RGBA']'sp_post',#'rgb_colour_distance'],#'Delta_E_2000'],#'Delta_E_Threshold','posterbin', 'Distance'],'RGborders''rgborders_sp']
                    #fitness_type=['cos_progressive','normalize','cos_sin_log_progressive','adaptable_learner'],
-                   fitness_type=['adaptable_learner'],
-                   elitism_mutation=[True],
-                   elitism_interval=[0],
-                   regulate_type=['none'],
-                   max_gen=[30_000],
+                   fitness_type=['cos_progressive'],
+                   regulate_type=['wave'],
+                   max_gen=[36_000],
                    save_imgs=[False])#_000]) #1000
     
 if __name__ == '__main__':

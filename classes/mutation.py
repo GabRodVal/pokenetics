@@ -15,9 +15,10 @@ class Mutation():
         self.calamity_enabled = calamity_enabled
 
 
-    def mutate(self, pk_img):
+    def mutate(self, img):
+        pk_img = cp.copy(img)
         
-        mutation_type = randint(0, 10)
+        mutation_type = randint(0, 28)
         #print(f'Tipo de mutação:{mutation_type}')
         match mutation_type:
             case 0:
@@ -29,147 +30,138 @@ class Mutation():
             case 3:
                 pk_img = cp.flipud(pk_img)
             case 4:
-                pk_img = cp.fliplr(cp.flipud(pk_img))
-            #case 5:
-                #pk_img = utils.to_rgba(utils.to_grayscale(pk_img))
-            #case 6:
-                #pk_img = utils.to_rgba(utils.to_black_n_white(pk_img))
-            #case 7:
-                #pk_img = utils.posterize(pk_img)
-            #case 8:
-                #pk_img = utils.posterize_hard(pk_img)
-            #case 9:
-                #cl = choices([(True, False, False), (False, True, False), (False, False, True), (True, True, False), (True, False, True), (False, True, True)], k=1)
-                #pk_img = utils.to_monochrome(pk_img, cl[0][0], cl[0][1], cl[0][2])
-            #case 10:
-                #pk_img = self.random_aberration(pk_img=pk_img)
-            #case 11:
-                #pk_img = self.statistic_aberration(pk_img=pk_img)
-            #case 12:
-                #pk_img = utils.fit_img(pk_img)
-            case 5:
+                v_half = pk_img.shape[0] // 2
                 if randint(0,1):
-                    v_half = pk_img.shape[0] // 2
-                    if randint(0,1):
-                        pk_img = cp.vstack((pk_img[:v_half], pk_img[:v_half]))
-                    else:
-                        pk_img = cp.vstack((pk_img[v_half:], pk_img[v_half:]))
+                    pk_img = cp.vstack((pk_img[:v_half], cp.flipud(pk_img[:v_half])))
                 else:
-                    h_half = pk_img.shape[1] // 2
-                    if randint(0,1):
-                        pk_img = cp.hstack((pk_img[:, :h_half], pk_img[:, :h_half]))
-                    else:
-                        pk_img = cp.hstack((pk_img[:, h_half:], pk_img[:, h_half:]))
-            #case 6:
-                '''v_half = pk_img.shape[0] // 2
+                    pk_img = cp.vstack((cp.flipud(pk_img[v_half:]), pk_img[v_half:]))
+            case 5:
                 h_half = pk_img.shape[1] // 2
                 if randint(0,1):
-                    if randint(0,1):
-                        pk_img = utils.resize_by_factor(cp.copy(pk_img[:v_half, h_half:]), 2)
-                    else:
-                        pk_img = utils.resize_by_factor(cp.copy(pk_img[v_half:, h_half:]), 2)
+                    pk_img = cp.hstack((pk_img[:, :h_half], cp.fliplr(pk_img[:, :h_half])))
                 else:
-                    if randint(0,1):
-                        pk_img = utils.resize_by_factor(cp.copy(pk_img[:v_half, :h_half]), 2)
-                    else:
-                        pk_img = utils.resize_by_factor(cp.copy(pk_img[v_half:, :h_half]), 2)'''
-            #case 7:
-            #    sml = utils.resize_by_factor(cp.copy(pk_img), 0.5)
-            #    col = cp.hstack((sml, sml))
-            #    pk_img = cp.vstack((col, col))
-            #case 8:
-                #pk_img = cp.asarray(cv2.blur(cp.asnumpy(pk_img),(3,3)))
-            
-                '''blur_mask = cp.array(
-                    [[1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0],
-                    [1.0/9.0,  1.0/9.0, 1.0/9.0, 1.0],
-                    [1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0],],
-                    [[1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0],
-                    [1.0/9.0,  1.0/9.0, 1.0/9.0, 1.0],
-                    [1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0],],
-                    [[1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0],
-                    [1.0/9.0,  1.0/9.0, 1.0/9.0, 1.0],
-                    [1.0/9.0, 1.0/9.0, 1.0/9.0, 1.0],],
-                    )'''
-                
-                
-                #pk_img = cv2.filter2D(pk_img, -1, sharp_mask)
-                #pk_img = scimg.convolve(pk_img, blur_mask)
-                #mk = pk_img[:,:, 3] > 0
-                #pk_img[mk] = 255
+                    pk_img = cp.hstack((cp.fliplr(pk_img[:, h_half:]), pk_img[:, h_half:]))
             case 6:
-                #gauss = cv2.GaussianBlur(pk_img, (3,3),0)
-                gauss = scimg.gaussian_filter(pk_img, sigma=3)
-                mk = gauss[:,:,3] > 0
-                gauss[mk,3] = 255
-                pk_img = gauss
+                pk_img = utils.to_rgba(utils.to_grayscale(pk_img))
             case 7:
-                pk_img = scimg.median_filter(pk_img, size=3)
-                #pk_img = cv2.medianBlur(pk_img, 3)
-            #case 11: 
-            #    st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-            #    pk_img = cp.asarray(cv2.erode(cp.asnumpy(pk_img), st_e, iterations=randint(1,3)))
-            #case 12:
-            #    st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-            #    pk_img = cp.asarray(cv2.dilate(cp.asnumpy(pk_img), st_e, iterations=randint(1,3)))
-            #case 21:
-                #st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-                #pk_img = cv2.morphologyEx(pk_img, cv2.MORPH_CLOSE, st_e, iterations=randint(1,2))
-            #case 22:
-                #st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-                #pk_img = cv2.morphologyEx(pk_img, cv2.MORPH_OPEN, st_e, iterations=randint(1,2))
-            #case 23:
-                #st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-                #pk_img = cv2.morphologyEx(pk_img, cv2.MORPH_GRADIENT, st_e)
-            #case 24:
-                #st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-                #pk_img = cv2.morphologyEx(pk_img, cv2.MORPH_TOPHAT, st_e)
-            #case 25:
-                #st_e = cv2.getStructuringElement(cv2.MORPH_CROSS,(3,3))
-                #pk_img = cv2.morphologyEx(pk_img, cv2.MORPH_BLACKHAT, st_e)
-            #case 13:
-            #    sharp_mask = cp.array([
-            #        [0 , -1, 0],
-            #        [-1,  5, -1],
-            #        [0, -1, 0],
-            #    ])
-            #    #pk_img = cv2.filter2D(pk_img, -1, sharp_mask)   
-            #    pk_img = scimg.convolve(pk_img, sharp_mask)
-            #case 14:
-            #    sharp_mask = cp.array([
-            #        [-1, -1, -1],
-            #        [-1,  9, -1],
-            #        [-1, -1, -1],
-            #    ])
-            #    
-            #    #pk_img = cv2.filter2D(pk_img, -1, sharp_mask)
-            #    pk_img = scimg.convolve(pk_img, sharp_mask)
-            #case 28:
-                ####gauss = scimg.gaussian_filter(pk_img, sigma=2)
-                #gauss = cv2.GaussianBlur(np.copy(pk_img), (3,3),0)
-                #mk = gauss[:,:,3] > 0
-                #pk_img = cv2.addWeighted(pk_img, 2.0, gauss, -1.0, 0)
-                #pk_img[mk,3] = 255
-            #case 29:
-                #pk_img = self.visible_mono(pk_img)
-            #case 30:
-                #pk_img = utils.bayer_dithering_RGB(pk_img)
-            #case 31:
-                #pk_img = utils.bayer_dithering_BY(pk_img)
-            #case 32:
-                #pk_img = cp.bitwise_not(pk_img)
-                #pk_img = cv2.bitwise_not(pk_img)
-            #laplacian
-            case 8 | 9 | 10 | _:
+                pk_img = utils.to_rgba(utils.to_black_n_white(pk_img))
+            case 8:
+                pk_img = utils.posterize(pk_img)
+            case 9:
+                pk_img = utils.posterize_binary(pk_img)
+            case 10:
+                buncha_zeros = cp.zeros((pk_img.shape[0],pk_img.shape[1]))
+                match randint(0,5):
+                    case 0:
+                        pk_img[:,:,1] = pk_img[:,:,0] = buncha_zeros
+                    case 1:
+                        pk_img[:,:,2] = pk_img[:,:,0] = buncha_zeros
+                    case 2:
+                        pk_img[:,:,1] = pk_img[:,:,2] = buncha_zeros
+                    case 3:
+                        pk_img[:,:,0] = buncha_zeros
+                    case 4:
+                        pk_img[:,:,1] = buncha_zeros
+                    case 5:
+                        pk_img[:,:,2] = buncha_zeros
+            case 11:
+                pk_img[:,:,0:3] = scimg.gaussian_filter(pk_img[:,:,:3], sigma=1)
+            case 12:
+                kernel = cp.zeros((3,3,1))
+                kernel[:,:,0] = cp.array([
+                    [1.0, 1.0, 1.0],
+                    [1.0, 1.0, 1.0],
+                    [1.0, 1.0, 1.0],
+                ])/9.0
+                mk = pk_img[:,:,3] > 0
+                pk_img = scimg.convolve(pk_img, kernel)
+                pk_img[mk,3] = 255
+            case 13:
+                pk_img[:,:,0:3] = scimg.median_filter(pk_img[:,:,:3],size=3)
+            case 14:
+                pk_img[:,:,0:3] = scimg.maximum_filter(pk_img[:,:,:3],size=3)
+            case 15:
+                pk_img[:,:,0:3] = scimg.minimum_filter(pk_img[:,:,:3], size=3)
+            case 16:
+                mask = cp.zeros((3,3,1))
+                mask[:,:,0] = cp.array([
+                    [0, 1, 0],
+                    [1, 1, 1],
+                    [0, 1, 0],
+                ])
+                pk_img[:,:,:3] = scimg.grey_erosion(pk_img[:,:,:3], structure=mask)
+            case 17:
+                mask = cp.zeros((3,3,1))
+                mask[:,:,0] = cp.array([
+                    [0, 1, 0],
+                    [1, 1, 1],
+                    [0, 1, 0],
+                ])
+                pk_img[:,:,:3] = scimg.grey_dilation(pk_img[:,:,:3], structure=mask)
+            case 18:
+                mask = cp.zeros((3,3,1))
+                mask[:,:,0] = cp.array([
+                    [0, 1, 0],
+                    [1, 1, 1],
+                    [0, 1, 0],
+                ])
+                pk_img[:,:,:3] = scimg.grey_opening(pk_img[:,:,:3], structure=mask)
+            case 19:
+                mask = cp.zeros((3,3,1))
+                mask[:,:,0] = cp.array([
+                    [0, 1, 0],
+                    [1, 1, 1],
+                    [0, 1, 0],
+                ])
+                pk_img[:,:,:3] = scimg.grey_closing(pk_img[:,:,:3], structure=mask)
+            case 20:
+                mask = cp.zeros((5,5,1))
+                mask[:,:,0] = cp.array([
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                    [1, 1, 1, 1, 1],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0]
+                ])
+                pk_img[:,:,:3] = scimg.black_tophat(pk_img[:,:,:3], structure=mask)
+            case 21:
+                mask = cp.zeros((5,5,1))
+                mask[:,:,0] = cp.array([
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0],
+                    [1, 1, 1, 1, 1],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 1, 0, 0]
+                ])
+                pk_img[:,:,:3] = scimg.white_tophat(pk_img[:,:,:3], structure=mask)
+            case 22:
+                mask = cp.zeros((3,3,1))
+                mask[:,:,0] = cp.array([
+                    [0, 1, 0],
+                    [1, 1, 1],
+                    [0, 1, 0]
+                ])
+                pk_img[:,:,:3] = scimg.morphological_gradient(pk_img[:,:,:3], structure=mask)
+            case 23:
+                mask = cp.zeros((3,3,1))
+                mask[:,:,0] = cp.array([
+                    [0, 1, 0],
+                    [1, 1, 1],
+                    [0, 1, 0]
+                ])
+                pk_img[:,:,:3] = scimg.morphological_laplace(pk_img[:,:,:3], structure=mask)
+            case 24:
+                pk_img[:,:,:3] = cp.bitwise_not(pk_img[:,:,:3])
+            case 25:
+                pk_img = utils.bayer_dithering_RGB(pk_img)
+            case 26:
+                pk_img = utils.bayer_dithering_BY(pk_img)
+            case _:
                 cp.random.shuffle(pk_img)
-        
-        
-        #if randint(0,9) == 9:
-        #    pk_img = self.mutate(pk_img=pk_img)
         
         return pk_img
 
-    def mutate_cpu(self, pk_img):
+    '''def mutate_cpu(self, pk_img):
         
         mutation_type = randint(0, 36)
         #print(f'Tipo de mutação:{mutation_type}')
@@ -304,7 +296,7 @@ class Mutation():
             pk_img = self.mutate(pk_img=pk_img)
             
         
-        return pk_img
+        return pk_img'''
     
     
     def random_aberration(self, pk_img):
@@ -351,7 +343,6 @@ class Mutation():
             if cl == '00000000':
                 continue
             color_weight.append((cl, int((pk_color_dict[cl]))))
-        print(color_weight)
         wgt = [w[1] for w in color_weight]
         
         markov_stats={
