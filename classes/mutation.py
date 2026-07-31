@@ -18,7 +18,7 @@ class Mutation():
     def mutate(self, img):
         pk_img = cp.copy(img)
         
-        mutation_type = randint(0, 28)
+        mutation_type = randint(0, 32)
         #print(f'Tipo de mutação:{mutation_type}')
         match mutation_type:
             case 0:
@@ -42,13 +42,13 @@ class Mutation():
                 else:
                     pk_img = cp.hstack((cp.fliplr(pk_img[:, h_half:]), pk_img[:, h_half:]))
             case 6:
-                pk_img = utils.to_rgba(utils.to_grayscale(pk_img))
+                pk_img[:,:,:3] = utils.to_rgba(utils.to_grayscale(pk_img))[:,:,:3]
             case 7:
                 pk_img = utils.to_rgba(utils.to_black_n_white(pk_img))
             case 8:
-                pk_img = utils.posterize(pk_img)
+                pk_img[:,:,:3] = utils.posterize(pk_img)[:,:,:3]
             case 9:
-                pk_img = utils.posterize_binary(pk_img)
+                pk_img[:,:,:3] = utils.posterize_binary(pk_img)[:,:,:3]
             case 10:
                 buncha_zeros = cp.zeros((pk_img.shape[0],pk_img.shape[1]))
                 match randint(0,5):
@@ -73,8 +73,8 @@ class Mutation():
                     [1.0, 1.0, 1.0],
                     [1.0, 1.0, 1.0],
                 ])/9.0
-                mk = pk_img[:,:,3] > 0
                 pk_img = scimg.convolve(pk_img, kernel)
+                mk = pk_img[:,:,3] > 0
                 pk_img[mk,3] = 255
             case 13:
                 pk_img[:,:,0:3] = scimg.median_filter(pk_img[:,:,:3],size=3)
@@ -156,6 +156,64 @@ class Mutation():
                 pk_img = utils.bayer_dithering_RGB(pk_img)
             case 26:
                 pk_img = utils.bayer_dithering_BY(pk_img)
+            case 27:
+                shift = randint(0, pk_img.shape[0]//2)
+                match randint(0,2):
+                    case 0:
+                        pk_img = scimg.shift(pk_img, (shift,0,0), mode='wrap')
+                    case 1:
+                        pk_img = scimg.shift(pk_img, (shift,0,0), mode='mirror')
+                    case 2:
+                        pk_img = scimg.shift(pk_img, (shift,0,0), mode='constant')
+            case 28:
+                shift = randint(0, pk_img.shape[1]//2)
+                match randint(0,2):
+                    case 0:
+                        pk_img = scimg.shift(pk_img, (0,shift,0), mode='wrap')
+                    case 1:
+                        pk_img = scimg.shift(pk_img, (0,shift,0), mode='mirror')
+                    case 2:
+                        pk_img = scimg.shift(pk_img, (0,shift,0), mode='constant')
+            case 29:
+                shift1 = randint(0, pk_img.shape[0]//2)
+                shift2 = randint(0, pk_img.shape[1]//2)
+                match randint(0,2):
+                    case 0:
+                        pk_img = scimg.shift(pk_img, (shift1,shift2,0), mode='wrap')
+                    case 1:
+                        pk_img = scimg.shift(pk_img, (shift1,shift2,0), mode='mirror')
+                    case 2:
+                        pk_img = scimg.shift(pk_img, (shift1,shift2,0), mode='constant')
+            case 30:
+                v1 = pk_img.shape[0]//2
+                h1 = pk_img.shape[1]//2
+                match randint(0,3):
+                    case 0 | 3:
+                        pk_img = scimg.zoom(pk_img, (2,2,1), mode='nearest',order=0)[v1:-v1,h1:-h1]
+                    case 1:
+                        pk_img = scimg.zoom(pk_img, (2,1,1), mode='nearest',order=0)[v1:-v1]
+                    case 2:
+                        pk_img = scimg.zoom(pk_img, (1,2,1), mode='nearest',order=0)[:,h1:-h1]
+            case 31:
+                v1 = pk_img.shape[0]//2
+                h1 = pk_img.shape[1]//2
+                match randint(0,3):
+                    case 0 | 3:
+                        s_1 = scimg.zoom(pk_img, (0.5,0.5,1), mode='nearest',order=0)
+                        v1 = s_1.shape[0]//2
+                        h1 = s_1.shape[1]//2
+                        pk_img[:,:,:] = 0
+                        pk_img[v1:-v1,h1:-h1] = s_1
+                    case 1:
+                        s_1 = scimg.zoom(pk_img, (0.5,1,1), mode='nearest',order=0)
+                        v1 = s_1.shape[0]//2
+                        pk_img[:,:,:] = 0
+                        pk_img[v1:-v1] = s_1
+                    case 2:
+                        s_1 = scimg.zoom(pk_img, (1,0.5,1), mode='nearest',order=0)
+                        h1 = s_1.shape[1]//2
+                        pk_img[:,:,:] = 0
+                        pk_img[:,h1:-h1] = s_1
             case _:
                 cp.random.shuffle(pk_img)
         

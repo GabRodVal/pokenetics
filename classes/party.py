@@ -10,7 +10,7 @@ import classes.crossover as crossover
 import classes.fitness as fitness
 import classes.utils as utils
 
-debug = True
+debug = False
 
 class Party():
     def __init__(
@@ -59,7 +59,7 @@ class Party():
         self.team = []
         self.fit_team = []
         #
-        self.dupes = True
+        self.dupes = False
         #
         self.base_dir = ''
         self.elitism_interval = (elitism_interval +1)
@@ -94,7 +94,7 @@ class Party():
         self.elite_couple = elite_couple
         #
         self.fitness_rate = self.og_pop_size
-        #self.fitness_list = []
+        self.fitness_list = []
         #
         self.verbose = verbose
         self.save_all_imgs = save_all_imgs
@@ -138,11 +138,14 @@ class Party():
 
 
     def regulate_self_standard(self):
-        self.crossover_rate = 0.48 + (0.36 - (0.36*(self.cur_gen/self.max_gen)))
-        self.mutation_rate = 0.005 + max(0.355 - (0.355 * ((self.max_gen - self.cur_gen)/self.max_gen)), 0)
+        self.crossover_rate = 0.48 + (0.40 - (0.40*(self.cur_gen/self.max_gen)))
+        self.mutation_rate = 0.005 + max(0.495 - (0.495 * ((self.max_gen - self.cur_gen)/self.max_gen)), 0)
         
-        #if self.elitism:
-        #    self.elitism_rate = max(min(0.50, (self.og_elitism_rate/2) + ((0.50 - (self.og_elitism_rate/2))/(self.cur_gen/self.max_gen))), self.og_elitism_rate/2)
+        if self.elitism:
+            self.elitism_rate = 0.005 + max(0.025 - (0.025 * ((self.max_gen - self.cur_gen)/self.max_gen)), 0)
+        
+        self.perseverance_rate = 0.04 + max(0.12 - (0.12 * ((self.max_gen - self.cur_gen)/self.max_gen)), 0)
+
 
         if self.reg_pop:
             self.pop_size = math.floor(max(8, (cp.int32(self.og_pop_size * (1.2 * (self.cur_gen/self.max_gen))))))
@@ -175,16 +178,16 @@ class Party():
     # Test instead of doubling waves using prime numbers
     def regulate_self_wavering(self):
         if self.reg_pop:
-            self.pop_size = min(max(round(self.og_pop_size + ((self.og_pop_size/2) * math.cos(math.radians(self.cur_gen * 1)))), 8), self.pokedex.get_pokedex_length())
+            self.pop_size = min(max(round(self.og_pop_size + ((self.og_pop_size/2) * math.sin(math.radians(self.cur_gen/(math.pi * 5))))), 8), self.pokedex.get_pokedex_length())
         # Test lower variation rate for crossover? 0.2? 0.25? 0.15? higher maybe? 0.33?
-        self.crossover_rate = 0.64 + (0.16 * math.cos(math.radians(self.cur_gen * 2 )))
+        self.crossover_rate = 0.64 + (0.24 * math.cos(math.radians(self.cur_gen/(math.pi * 3))))
 
         if self.elitism:
-            self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate * 0.875) * math.sin(math.radians(self.cur_gen * 7))), 0.002), 0.05) 
+            self.elitism_rate = min(max(self.og_elitism_rate + ((self.og_elitism_rate * 0.875) * math.sin(math.radians(self.cur_gen/math.pi))), 0.002), 0.05) 
         
-        self.perseverance_rate = 0.24 + (0.16 * math.cos(math.radians(self.cur_gen * 5)))
+        self.perseverance_rate = 0.12 + (0.08 * math.sin(math.radians(self.cur_gen/(math.pi * 2))))
         
-        self.mutation_rate = self.og_mutation_rate + ((self.og_mutation_rate/2) * math.sin(math.radians(self.cur_gen * 3))) + ((self.cur_gen/self.max_gen) * 0.225)
+        self.mutation_rate = self.og_mutation_rate + ((self.og_mutation_rate/2) * math.sin(math.radians(self.cur_gen))) + ((self.cur_gen/self.max_gen) * 0.225)
 
     def get_new_crossover_mutation(self):
         selected = self.selection(2)
@@ -202,7 +205,7 @@ class Party():
 
         return c_a, c_b
 
-    '''def royal_marriage(self, el_a, el_b):
+    def royal_marriage(self, el_a, el_b):
         c_a, c_b = self.crossover.crossover_couple(el_a, el_b)
         if self.elitism_mutation:
             if randint(0, 100_000) < (self.mutation_rate * 100_000):
@@ -210,15 +213,17 @@ class Party():
             if randint(0, 100_000) < (self.mutation_rate * 100_000):
                 c_b = self.mutation.mutate(c_b)
                 
-        return c_a, c_b'''
+        return c_a, c_b
 
     def create_target_ref_img(self):
         factor = math.floor(512/self.target_mon[2].shape[0])
         
         
         imio.imwrite(f'{self.base_dir}/target.png', cp.asnumpy(utils.resize_by_factor(self.target_mon[2], factor)))
-        border = utils.to_rgba(utils.to_edges(cp.copy(self.target_mon[2])))
+        border = utils.to_rgba(utils.to_edges(cp.copy(self.target_mon[2]), False))
         imio.imwrite(f'{self.base_dir}/target_border.png', cp.asnumpy(utils.resize_by_factor(border, factor)))
+        border_s = utils.to_rgba(utils.to_edges(cp.copy(self.target_mon[2]), True))
+        imio.imwrite(f'{self.base_dir}/target_border_s.png', cp.asnumpy(utils.resize_by_factor(border_s, factor)))
         gray_target = utils.to_rgba(utils.to_grayscale(cp.copy(self.target_mon[2])))
         imio.imwrite(f'{self.base_dir}/target_gray.png', cp.asnumpy(utils.resize_by_factor(gray_target, factor)))
         bw_target = utils.to_rgba(utils.to_black_n_white(cp.copy(self.target_mon[2])))
@@ -231,15 +236,19 @@ class Party():
         imio.imwrite(f'{self.base_dir}/target_self_sim.png', cp.asnumpy(utils.resize_by_factor(sim_self_target, factor)))
         diff_self_target = utils.get_difference_sprite(cp.copy(self.target_mon[2]),cp.copy(self.target_mon[2]))
         imio.imwrite(f'{self.base_dir}/target_self_diff.png', cp.asnumpy(utils.resize_by_factor(diff_self_target, factor)))
-
+        tmi_target = utils.too_much_info(cp.copy(self.target_mon[2]))
+        imio.imwrite(f'{self.base_dir}/target_TMI.png', cp.asnumpy(utils.resize_by_factor(tmi_target, factor)))
+        wallpaper_target = utils.wallpaper(cp.copy(self.target_mon[2]))
+        imio.imwrite(f'{self.base_dir}/target_pop.png', cp.asnumpy(utils.resize_by_factor(wallpaper_target, factor)))
 
     
     def selection(self, select_num):
         apt = [t[2] for t in self.team]
+        self.fitness_list = apt
 
         while True:
             # Should return two values since this shit is only used for crossover
-            selected = choices(self.team, weights=apt, k=select_num)
+            selected = choices(self.team, weights=apt, k=max(2,select_num))
 
             if not(cp.array_equal(selected[0][0], selected[1][0])):
                 break
@@ -288,21 +297,36 @@ class Party():
         
         if self.elitism:
             most_fit_mon = sorted_team.pop()
-            if self.get_GOAT_pokemon()[1] < most_fit_mon[1]:
+            if self.get_GOAT_pokemon()[1] <= most_fit_mon[1]:
                 self.set_GOAT_pokemon(most_fit_mon)
             
-            #if self.cur_gen % self.elitism_interval == 0:
-            #if True:
-            if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
-                    fittest_few.append(self.mutation.mutate(self.get_GOAT_pokemon()[0]))
+            if self.cur_gen % 10 == 0:
+                #if True:
+                if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
+                        fittest_few.append(self.mutation.mutate(self.get_GOAT_pokemon()[0]))
+                else:
+                    fittest_few.append(self.get_GOAT_pokemon()[0])
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100:.2f}p_{most_fit_mon[2]}ft_SR0.png', cp.asnumpy(most_fit_mon[0]))
             else:
-                fittest_few.append(self.get_GOAT_pokemon()[0])
-            if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100}_SR0.png', cp.asnumpy(most_fit_mon[0]))
+                if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
+                    fittest_few.append(self.mutation.mutate(most_fit_mon[0]))
+                else:
+                    fittest_few.append(most_fit_mon[0])
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(most_fit_mon[1]/self.target_mon[3])*100:.2f}p_{most_fit_mon[2]}ft_SR0.png', cp.asnumpy(most_fit_mon[0]))
+            if self.elite_couple:
+                almost_most = sorted_team.pop()
+                while cp.array_equal(almost_most[0], most_fit_mon[0]):
+                    almost_most = sorted_team.pop()
+                
+                el_ca, el_cb = self.royal_marriage(cp.copy(most_fit_mon[0]), cp.copy(almost_most[0]))
+                fittest_few.append(almost_most[0])
+                fittest_few.append(el_ca)
+                fittest_few.append(el_cb)
             
             if self.pity:
-                least_fit_mon = sorted_team[0].copy
-                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(least_fit_mon[1]/self.target_mon[3])*100}_FFF0.png', cp.asnumpy(least_fit_mon[0]))
-                new_gen.append(least_fit_mon[0])
+                least_fit_mon = sorted_team[0]
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(least_fit_mon[1]/self.target_mon[3])*100:.2f}p_{least_fit_mon[2]}ft_FFF0.png', cp.asnumpy(least_fit_mon[0]))
+                new_gen.append(cp.copy(least_fit_mon[0]))
                 if self.elitism_mutation and randint(0, 100_000) < (self.mutation_rate * 100_000):
                     new_gen.append(self.mutation.mutate(cp.copy(least_fit_mon[0])))
 
@@ -323,7 +347,7 @@ class Party():
                 new_gen.append(t_m)
             else:
                 new_gen.append(cp.copy(tournament[it][0]))
-            if self.save_all_imgs:imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(tournament[it][1]/self.target_mon[3])*100}_WW{it}.png', cp.asnumpy(tournament[it][0]))
+            if self.save_all_imgs:imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(tournament[it][1]/self.target_mon[3])*100:.2f}p_{tournament[it][2]}ft_WW{it}.png', cp.asnumpy(tournament[it][0]))
         
         
         
@@ -337,10 +361,10 @@ class Party():
                 else:
                     fittest_few.append(cp.copy(heir[0]))
                 
-                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(heir[1]/self.target_mon[3])*100}_R{iter}.png', cp.asnumpy(heir[0]))
+                if self.save_all_imgs: imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(heir[1]/self.target_mon[3])*100:.2f}p_{heir[2]}ft_R{iter}.png', cp.asnumpy(heir[0]))
             elif self.save_all_imgs and len(sorted_team) > 0:
                 old_poke = sorted_team.pop()
-                imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(old_poke[1]/self.target_mon[3])*100}_C{iter}.png', cp.asnumpy(old_poke[0]))
+                imio.imwrite(f'{self.base_dir}/gen_{self.cur_gen}/{(old_poke[1]/self.target_mon[3])*100:.2f}p_{old_poke[2]}ft_C{iter}.png', cp.asnumpy(old_poke[0]))
         
         self.team = []
         
@@ -391,7 +415,7 @@ class Party():
         self.team = self.fitness.get_team_fitness_score(self.team)
         #self.team[:,2] = self.fit_team[:]
 
-    #def get_fitness_list(self):
+    def get_fitness_list(self):
         #f_list = self.fitness.get_fitness_list()
-    #    f_values = [f[1] for f in f_list]
-    #    return f_values
+        #f_values = [f[1] for f in f_list]
+        return self.fitness_list

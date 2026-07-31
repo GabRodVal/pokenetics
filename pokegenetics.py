@@ -174,10 +174,10 @@ class PokeGenetics():
 
         self.cur_score = int(math.floor(most_fit_mon[1]))
         self.cur_stamp = datetime.datetime.now().timestamp()
-        if self.pity:
-            least_fit_mon = self.party.get_lowest_score()
-            self.lowest_score = float(least_fit_mon)
-            self.low_scores.append(self.lowest_score)
+        #if self.pity:
+        #    least_fit_mon = self.party.get_lowest_score()
+        #    self.lowest_score = float(least_fit_mon)
+        #    self.low_scores.append(self.lowest_score)
             
             
         stats = self.party.get_stats()
@@ -234,7 +234,7 @@ class PokeGenetics():
 
 
         
-        if len(self.top_league) < 1 or (most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3]/8000):
+        if len(self.top_league) < 1 or (most_fit_mon[1] - self.top_league[len(self.top_league)-1][1]) > (target_mon[3]/(96*96*3)):
             factor = math.ceil(256/most_fit_mon[0].shape[0])
 
             self.top_league.append(most_fit_mon)
@@ -307,7 +307,7 @@ class PokeGenetics():
     # Add a post 99 graph, and maybe something else with it by side (total points per gen?)
     def plot_progress(self):
         target_mon = self.party.get_target_pokemon()
-        #fitness_list = self.party.get_fitness_list()
+        fitness_list = self.party.get_fitness_list()
         
         plt.figure(figsize=(24, 18))
         
@@ -337,8 +337,8 @@ class PokeGenetics():
         main_fig.grid()
         main_fig.plot(self.h_scores, '#6a329f', label='main_score', linewidth=1.6)
         main_fig.plot(self.true_scores, '#DD0022', label='true_score', linewidth=1.4)
-        if self.pity:
-            main_fig.plot(self.low_scores, '#EE8844', label='low_score', linewidth=1.4)
+        #if self.pity:
+        #    main_fig.plot(self.low_scores, '#EE8844', label='low_score', linewidth=1.4)
         main_fig.legend()
 
         scr_h1_fig.set_title("H1")
@@ -357,7 +357,7 @@ class PokeGenetics():
         cross_fig.grid()
         cross_fig.plot(self.cross_values, '#f44336', label='crossover_rate', linewidth=0.8)
 
-        elt_fig.set_title(f"Perseverance/Elitism Rate - Avg {mean(self.elt_values):.2f}%")
+        elt_fig.set_title(f"Perseverance/Elitism Rate - Avg {mean(self.pers_values):.2f}|{mean(self.elt_values):.2f}%")
         elt_fig.grid()
         elt_fig.plot(self.pers_values, "#e4c358", label='pers_rate', linewidth=0.7)
         elt_fig.plot(self.elt_values, '#36a4bc', label='elt_rate', linewidth=0.7)
@@ -365,7 +365,7 @@ class PokeGenetics():
 
         fit_fig.set_title(f"{self.fitness_type.capitalize()}")
         fit_fig.grid()
-        fit_fig.plot(self.fitness_values, "#9c0d54", label='max_fitness', linewidth=0.8)
+        fit_fig.plot(fitness_list, "#9c0d54", label='max_fitness', linewidth=0.8)
 
         mut_fig.set_title(f"Mutation Rate - Avg {mean(self.mut_values):.2f}%")
         mut_fig.grid()

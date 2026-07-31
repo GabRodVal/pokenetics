@@ -11,7 +11,7 @@ import json
 import cv2
 import colour
 
-
+giant = False
 debug = False
 MAX_DIST = math.dist([0,0,0],[255,255,255])
 MAX_DELTA_E_1994 = 255.0
@@ -80,7 +80,9 @@ class Pokedex():
                 
         self.target_border_matrix = utils.find_edges(cp.copy(target_image))
         
-        self.target_border = utils.to_edges(cp.copy(target_image))
+        self.target_border = utils.to_edges(cp.copy(target_image), False)
+        self.target_border_s = utils.to_edges(cp.copy(target_image), True)
+        self.target_tmi = utils.too_much_info(cp.copy(target_image))
         self.target_lab = utils.rgba_to_lab(cp.copy(target_image))
         self.target_gray = utils.to_grayscale(cp.copy(target_image))
         self.target_BW = utils.to_black_n_white(cp.copy(target_image))
@@ -122,6 +124,10 @@ class Pokedex():
             if debug:  print(f'uouies: {dex} - {img_arch.shape}')
             img_arch = cv2.resize(img_arch, (self.dim[0], self.dim[0]))
         
+        alpha = img_arch[:,:,3] == 0
+                
+        img_arch[alpha] = [0,0,0,0]
+        
         ######
         img_arch = cp.asarray(img_arch)
         if self.posterize_hard_all:
@@ -132,6 +138,10 @@ class Pokedex():
         mini_sprites = False
         if mini_sprites:
             img_arch = utils.resize_by_factor(img_arch, 0.5)
+        
+        if giant:
+            img_arch = utils.resize_by_factor(img_arch, 8)
+        
         
         return img_arch
     
@@ -185,6 +195,8 @@ class Pokedex():
             score = self.aval_target_monochrome(ref_mon=ref_mon, acc_mon=acc_mon, is_ref_target=is_ref_target)
         elif self.score_type == 'Perfect'.lower():
             score = self.aval_target_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
+        elif self.score_type == 'semiperfect'.lower():
+            score = self.aval_target_semi_perfect(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'borders'.lower():
             score = self.aval_target_borders(ref_mon=ref_mon, acc_mon=acc_mon, is_ref_target=is_ref_target)
         elif self.score_type == 'Distance'.lower():
@@ -211,6 +223,8 @@ class Pokedex():
         #    score = self.aval_RGBorders_GBW(ref_mon=ref_mon, acc_mon=acc_mon)
         elif self.score_type == 'RGborders_SP'.lower():
             score = self.aval_RGBorders_SP(ref_mon=ref_mon, acc_mon=acc_mon, is_ref_target=is_ref_target)
+        elif self.score_type == 'tmi'.lower():
+            score = self.aval_TMI(ref_mon=ref_mon, acc_mon=acc_mon, is_ref_target=is_ref_target)
         #elif self.score_type == 'multiple'.lower():
         #    score = self.aval_multiple(ref_mon=ref_mon, acc_mon=acc_mon)
         #elif self.score_type == 'harsh_perfect'.lower():
@@ -458,14 +472,20 @@ class Pokedex():
             ref_post = self.target_post
             ref_posterbin = self.target_posterbin
         else:
+            ref_mon[ref_mon[:,:,3] < 255] = [0,0,0,0]
             ref_post = utils.posterize(cp.copy(ref_mon))
             ref_posterbin = utils.posterize_binary(cp.copy(ref_mon))
+        acc_mon[acc_mon[:,:,3] < 255] = [0,0,0,0]
         acc_post = utils.posterize(cp.copy(acc_mon))
         acc_posterbin = utils.posterize_binary(cp.copy(acc_mon))
         
-        rgb_std = self.aval_target_RGB_colour_distance(ref_mon, acc_mon)
-        rgb_post = self.aval_target_RGB_colour_distance(ref_post, acc_post)
-        rgb_posterbin = self.aval_target_RGB_colour_distance(ref_posterbin, acc_posterbin)
+        #rgb_std = self.aval_target_RGB_colour_distance(ref_mon, acc_mon)
+        #rgb_post = self.aval_target_RGB_colour_distance(ref_post, acc_post)
+        #rgb_posterbin = self.aval_target_RGB_colour_distance(ref_posterbin, acc_posterbin)
+        rgb_std = self.aval_target_semi_perfect(ref_mon, acc_mon)
+        rgb_post = self.aval_target_semi_perfect(ref_post, acc_post)
+        rgb_posterbin = self.aval_target_semi_perfect(ref_posterbin, acc_posterbin)
+        #rgb_colour_dist = self.aval_target_RGB_colour_distance(ref_mon, acc_mon)
         
         score = (rgb_std + rgb_post + rgb_posterbin)
             
@@ -484,33 +504,20 @@ class Pokedex():
     
     #semiperfect
     def aval_target_semi_perfect(self, ref_mon, acc_mon):
-        scr_arr = cp.zeros_like(ref_mon)
+        scr_arr = cp.zeros((ref_mon.shape[0],ref_mon.shape[1],3))
         
-        scr_mk = ref_mon[:,:,:] == acc_mon[:,:,:]
+        eq_ap0 = (ref_mon[:,:,3] == acc_mon[:,:,3]) & (ref_mon[:,:,3] == 0)
+        diff_ap = ref_mon[:,:,3] != acc_mon[:,:,3]
         
-        scr_arr[scr_mk] = 1
+        scr_mk = (ref_mon[:,:,:3] == acc_mon[:,:,:3])
+        
+        scr_arr[scr_mk] = 255
+        scr_arr[eq_ap0] = [255,255,255]
+        scr_arr[diff_ap] = [0,0,0]
         
         score = cp.sum(scr_arr)
         
         return score
-    
-    #posterized
-    def aval_target_posterized(self, ref_mon, acc_mon):
-        ref_post = utils.posterize(cp.copy(ref_mon))
-        acc_post = utils.posterize(cp.copy(acc_mon))
-
-        score = self.aval_target_standard(ref_post, acc_post)
-            
-        return score
-    
-    def aval_target_posterbin(self, ref_mon, acc_mon):
-        ref_post = utils.posterize_binary(cp.copy(ref_mon))
-        acc_post = utils.posterize_binary(cp.copy(acc_mon))
-
-        score = self.aval_target_standard(ref_post, acc_post)
-            
-        return score
-
     def aval_target_semi_perfect_posterized(self, ref_mon, acc_mon, is_ref_target:bool = False):
         
         if is_ref_target:
@@ -566,47 +573,39 @@ class Pokedex():
                         score += max(1 * (2 * self.target_border_matrix[j][k][0]), 1)
 
         return score
-
-    # add aval_border
-    # if pix == 0,0,0,255 or 255,255,255,255?      -1
-    # ADD EDGE DETECTION ->         cross matrix -1 4 -1
-    # Save self.target_edge                        -1
-    # border = * 4
-    # full pix equal -> 6 pts
-    # full alpha0 equal -> 4pts
-    # channel equal -> 1pt
-    '''score = cp.int32(0)
-
-        for j in range(0, len(ref_mon)):
-            for k in range(0, len(ref_mon)):
-                if (ref_mon[j][k][3] == 255 and acc_mon[j][k][3] == 0) or (ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 255):
-                    continue
-                elif ref_mon[j][k][3] == 0 and acc_mon[j][k][3] == 0:
-                    #score += cp.int32(255*4)
-                    score += cp.int32(255*3)
-                else:
-                    #for l in range (0, 4):
-                    for l in range (0, 3):
-                        score += cp.int32(255 - abs(cp.int32(ref_mon[j][k][l]) - acc_mon[j][k][l]))
-            
-        return score'''
     
     def aval_target_borders(self, ref_mon, acc_mon, is_ref_target:bool = False):
         
         score = 0
         scr_arr = cp.zeros((ref_mon.shape[0],ref_mon.shape[1]))
         
+        #mk_ref = ref_mon[:,:,3] != 255
+        #mk_acc = acc_mon[:,:,3] != 255
+        
         if is_ref_target:
-            ref_edge = self.target_border
+            ref_edge_1 = self.target_border
+            ref_edge_2 = self.target_border_s
         else:
-            ref_edge = utils.to_edges(cp.copy(ref_mon))   
+            ref_edge_1 = utils.to_edges(cp.copy(ref_mon), False)
+            ref_edge_2 = utils.to_edges(cp.copy(ref_mon), True)
+        #ref_edge_1[mk_ref] = 3
+        #ref_edge_2[mk_ref] = 3
         
-        acc_edge = utils.to_edges(cp.copy(acc_mon))
-        scr_mk_w = (ref_edge[:,:] == acc_edge[:,:]) & (ref_edge[:,:] == 255)
-        scr_mk_b = (ref_edge[:,:] == acc_edge[:,:]) & (ref_edge[:,:] == 0)
+        acc_edge_1 = utils.to_edges(cp.copy(acc_mon), False)
+        acc_edge_2 = utils.to_edges(cp.copy(acc_mon), True)
+        #acc_edge_1[mk_acc] = 2
+        #acc_edge_2[mk_acc] = 2
         
-        scr_arr[scr_mk_b] = 1
-        scr_arr[scr_mk_w] = 2
+        #scr_mk = ref_edge[:,:] == acc_edge[:,:]
+        #scr_mk_w = (ref_edge[:,:] == acc_edge[:,:]) & (ref_edge[:,:] == 255)
+        #scr_mk_nw = (ref_edge[:,:] != acc_edge[:,:]) & (ref_edge[:,:] == 255)
+        #scr_mk_nb = (ref_edge[:,:] != acc_edge[:,:]) & (ref_edge[:,:] == 0)
+        #scr_mk_b = (ref_edge[:,:] == acc_edge[:,:]) & (ref_edge[:,:] == 0)
+        
+        scr_arr[(ref_edge_1[:,:] == acc_edge_1[:,:])] += 2
+        #scr_arr[(ref_edge_1[:,:] == acc_edge_1[:,:]) & (ref_edge_1[:,:] == 0)] += 1
+        scr_arr[(ref_edge_2[:,:] == acc_edge_2[:,:])] += 1
+        #scr_arr[(ref_edge_2[:,:] == acc_edge_2[:,:]) & (ref_edge_2[:,:] == 0)] += 1        
         score = cp.sum(scr_arr)
         
         return score
@@ -629,7 +628,7 @@ class Pokedex():
     
     def aval_RGBorders(self, ref_mon, acc_mon, is_ref_target:bool = False):
         scr_border = self.aval_target_borders(ref_mon=ref_mon,acc_mon=acc_mon, is_ref_target=is_ref_target)
-        scr_color = self.aval_target_RGB_colour_distance(ref_mon=ref_mon,acc_mon=acc_mon)
+        scr_color = self.aval_target_RGB_complete(ref_mon=ref_mon,acc_mon=acc_mon, is_ref_target=is_ref_target)
                 
         scr_border_weighted = MAX_RGB_COLOUR_DIST * scr_border
         
@@ -640,24 +639,34 @@ class Pokedex():
     def aval_RGBorders_SP(self, ref_mon, acc_mon, is_ref_target:bool = False):
         scr_border = self.aval_target_borders(ref_mon=ref_mon,acc_mon=acc_mon, is_ref_target=is_ref_target)
         scr_color = self.aval_target_RGB_complete(ref_mon=ref_mon,acc_mon=acc_mon, is_ref_target=is_ref_target)
+        scr_rgb_dist = self.aval_target_RGB_colour_distance(ref_mon=ref_mon,acc_mon=acc_mon)
         scr_mono = self.aval_target_monochrome(ref_mon=ref_mon,acc_mon=acc_mon, is_ref_target=is_ref_target)
         
         
         
         #scr_sppost = self.aval_target_semi_perfect_posterized(ref_mon=ref_mon,acc_mon=acc_mon, is_ref_target=is_ref_target)
         
-        scr_border_weighted = MAX_RGB_COLOUR_DIST * scr_border * 3
+        scr_border_weighted = MAX_RGB_COLOUR_DIST * scr_border
         #scr_sppost_weighted = 255 * scr_sppost
-        scr_color_weighted = scr_color
-        scr_mono_weighted = scr_mono * 2
+        scr_color_weighted = scr_color + scr_rgb_dist
+        scr_mono_weighted = scr_mono
         #scr_bw_weighted = (MAX_RGB_COLOUR_DIST * scr_bw)
-        
         if not(is_ref_target):
             print(f'Border_total:{scr_border_weighted}\nRGB_total:{scr_color_weighted}\nMono_total:{scr_mono_weighted}')
         
         score = (scr_border_weighted + scr_color_weighted + scr_mono_weighted)
         
         return score
+    
+    def aval_TMI(self, ref_mon, acc_mon, is_ref_target:bool = False):
+        if is_ref_target:
+            ref_tmi = self.target_tmi
+        else:
+            ref_tmi = utils.too_much_info(cp.copy(ref_mon))
+        
+        acc_tmi = utils.too_much_info(acc_mon)
+        
+        return self.aval_target_RGB_complete(ref_mon=ref_tmi,acc_mon=acc_tmi) + self.aval_target_monochrome(ref_mon=ref_tmi,acc_mon=acc_tmi)
     
     def aval_RGBorders_GBW(self, ref_mon, acc_mon):
         scr_border = self.aval_target_borders_only(acc_mon=acc_mon)

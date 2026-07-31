@@ -15,32 +15,32 @@ class Fitness():
         self.last_used = 'none'
         self.adaptable_smart_stats = {
             "cos_progressive": {
-                "success_num": 10,
-                "total_num": 10,
+                "success_num": 3,
+                "total_num": 3,
             },
             "cos_sin_log_progressive": {
-                "success_num": 10,
-                "total_num": 10,
+                "success_num": 3,
+                "total_num": 3,
             },
             "cos_double": {
-                "success_num": 10,
-                "total_num": 10,
+                "success_num": 3,
+                "total_num": 3,
             },
             "sin_half": {
-                "success_num": 10,
-                "total_num": 10,
+                "success_num": 3,
+                "total_num": 3,
             },
             "normalize": {
-                "success_num": 10,
-                "total_num": 10,
+                "success_num": 3,
+                "total_num": 3,
             },
             "windowing": {
-                "success_num": 10,
-                "total_num": 10,
+                "success_num": 3,
+                "total_num": 3,
             },
             "score": {
-                "success_num": 10,
-                "total_num": 10,
+                "success_num": 3,
+                "total_num": 3,
             },
             }
         
@@ -206,10 +206,10 @@ class Fitness():
                 ('cos_progressive', utils.safe_weight(self.adaptable_smart_stats['cos_progressive']['total_num'], self.adaptable_smart_stats['cos_progressive']['success_num'] )),
                 ('cos_sin_log_progressive', utils.safe_weight(self.adaptable_smart_stats['cos_sin_log_progressive']['total_num'], self.adaptable_smart_stats['cos_sin_log_progressive']['success_num'] )),
                 ('cos_double', utils.safe_weight(self.adaptable_smart_stats['cos_double']['total_num'], self.adaptable_smart_stats['cos_double']['success_num'] )),
-                ('sin_half', utils.safe_weight(self.adaptable_smart_stats['sin_half']['total_num'], self.adaptable_smart_stats['sin_half']['success_num'] )),
+                #('sin_half', utils.safe_weight(self.adaptable_smart_stats['sin_half']['total_num'], self.adaptable_smart_stats['sin_half']['success_num'] )),
                 ('normalize', utils.safe_weight(self.adaptable_smart_stats['normalize']['total_num'], self.adaptable_smart_stats['normalize']['success_num'] )),
                 ('windowing', utils.safe_weight(self.adaptable_smart_stats['windowing']['total_num'], self.adaptable_smart_stats['windowing']['success_num'] )),
-                ('score', utils.safe_weight(self.adaptable_smart_stats['score']['total_num'], self.adaptable_smart_stats['score']['success_num'] )),
+                #('score', utils.safe_weight(self.adaptable_smart_stats['score']['total_num'], self.adaptable_smart_stats['score']['success_num'] )),
                     ]
             
             apt = [w[1] for w in pool]

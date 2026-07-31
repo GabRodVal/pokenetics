@@ -16,21 +16,27 @@ def to_8bit_safe(num):
 def to_grayscale(img):
     pkgrey = cp.zeros((img.shape[0],img.shape[1]), dtype=cp.uint8)
     mk = img[:,:,3] == 0
+    img[mk] = [0,0,0,0]
     pkgrey = cp.mean(img[:,:,:3], axis=2)
-    pkgrey[mk] = 128
+    pkgrey[mk] = cp.bitwise_not(cp.mean(pkgrey).astype(cp.uint8))
     
     return pkgrey
 
 def to_black_n_white(img):    
-    mk = img[:,:,3] == 0
-    t_im = cp.copy(img)
-    #t_im[mk] = [128,128,128,255]
-    
-    ref = to_grayscale(t_im)
-    ref[ref[:,:] < 128] = 0
-    ref[ref[:,:] >= 128] = 255
-    ref[mk] = 128
-    
+    if len(img.shape) >= 3:
+        mk = img[:,:,3] == 0
+        t_im = cp.copy(img)
+        #t_im[mk] = [128,128,128,255]
+        
+        ref = to_grayscale(t_im)
+        ref[ref[:,:] < 128] = 0
+        ref[ref[:,:] >= 128] = 255
+        ref[mk] = cp.bitwise_not(cp.mean(ref).astype(cp.uint8))
+    else:
+        ref = cp.copy(img)
+        ref[ref[:,:] < 128] = 0
+        ref[ref[:,:] >= 128] = 255
+            
     return ref
 
 def to_rgba(img):
@@ -100,19 +106,29 @@ def format_team_pk_scr_fit(team, dupes:bool):
     if not(dupes):
         wk_team = team.copy()
         unq_team = []
-        while len(wk_team) > 0:
+        while len(wk_team) > 1:
             subject = wk_team.pop()
-            unq_team.append([subject.copy(), 0, 0])
-            md_team = []
-            if len(wk_team) > 0:
-                for pk in wk_team:
-                    if cp.array_equal(subject, pk):
-                        continue
-                    else:
-                        md_team.append(pk)
-                        
-            wk_team = md_team.copy()
-            md_team.clear()
+            uniq = True
+            for it in wk_team:
+                if cp.array_equal(subject,it):
+                    uniq = False
+                    break
+            if uniq:
+                unq_team.append([subject.copy(), 0, 0])
+        
+        l_o = wk_team.pop()
+        unq_team.append([l_o.copy(), 0, 0])
+        '''unq_team.append([subject.copy(), 0, 0])
+        md_team = []
+        if len(wk_team) > 0:
+            for pk in wk_team:
+                if cp.array_equal(subject, pk):
+                    continue
+                else:
+                    md_team.append(pk)
+                    
+        wk_team = md_team.copy()
+        md_team.clear()'''
     else:
         wk_team = team.copy()
         unq_team = []
@@ -252,17 +268,33 @@ def get_border_sprites(arr):
        
        
        
-def to_edges(img):
+def to_edges(img, sharp_kernel:bool = False):
     kernel = cp.zeros((3,3))
-    kernel[:,:] = cp.array([
-    [-1, -1, -1],
-    [-1, 8, -1],
-    [-1, -1, -1],
-    ])
-    pk_edge =  scimg.convolve(to_grayscale(img), kernel)
-    ts = 127
-    pk_edge[pk_edge[:,:] >= ts] = 255
-    pk_edge[pk_edge[:,:] < ts] = 0
+    
+    if sharp_kernel:
+        kernel[:,:] = cp.array([
+        [-1, -1, -1],
+        [-1, 9, -1],
+        [-1, -1, -1],
+        ])
+        pk_edge =  scimg.convolve(to_grayscale(img), kernel)
+        ts = 128
+        mk_bt = pk_edge[:,:] >= ts
+        mk_st = pk_edge[:,:] < ts
+        pk_edge[mk_bt] = 0
+        pk_edge[mk_st] = 255
+    else:
+        kernel[:,:] = cp.array([
+        [-1, -1, -1],
+        [-1, 8, -1],
+        [-1, -1, -1],
+        ])
+        pk_edge =  scimg.convolve(to_grayscale(img), kernel)
+        ts = 128
+        mk_bt = pk_edge[:,:] >= ts
+        mk_st = pk_edge[:,:] < ts
+        pk_edge[mk_bt] = 255
+        pk_edge[mk_st] = 0
     
     return pk_edge
     
@@ -458,7 +490,7 @@ def get_color_list(img, skip_alpha=False):
     all_colors = set()
     for i in range(len(img)):
             for j in range(len(img[0])):
-                if img[i][j][3] != 255 and skip_alpha:
+                if img[i][j][3] == 0 and skip_alpha:
                     continue
                 all_colors.add(color_to_hex(img[i][j][0:4]))
     
@@ -479,10 +511,10 @@ def get_color_dict(img, posterize:bool, skip_alpha=False):
         
         for i in range(len(img)):
             for j in range(len(img[0])):
-                if img[i][j][3] != 255 and skip_alpha:
+                if img[i][j][3] == 0 and skip_alpha:
                     continue
                 rr,gg,bb,alpha = n_img[i][j]
-                if alpha != 255:
+                if alpha == 0:
                     hex_color = '00000000'
                 else:
                     hex_color = f'{color_to_hex([rr,gg,bb])}ff'
@@ -533,3 +565,84 @@ def bayer_dithering_BY(img):
     bayer[:,:,3] = alpha[:,:]
 
     return bayer
+
+def wallpaper(img):
+    def stack_mono(img):
+        g_img = to_grayscale(cp.copy(img)).astype(cp.uint8)
+        bw_img = to_black_n_white(cp.copy(img)).astype(cp.uint8)
+        g_stack = cp.hstack((g_img,cp.bitwise_not(cp.fliplr(g_img))))
+        bw_stack = cp.hstack((cp.bitwise_not(cp.fliplr(bw_img)),bw_img))
+        stacked = cp.vstack((g_stack, bw_stack))
+        return stacked
+
+    gray = to_rgba(stack_mono(cp.copy(img)))
+
+    mk_a = img[:,:,3] == 0
+
+    rr = cp.zeros((img.shape[0]*2,img.shape[1]*2,img.shape[2]), dtype=cp.uint8)
+    r1 = to_rgba(cp.copy(img)[:,:,0])
+    r1[mk_a] = 0
+    rr[:,:,0] = stack_mono(r1)
+    rr[:,:,1] = rr[:,:,2] = cp.bitwise_not(rr[:,:,0])
+    
+    g1 = to_rgba(cp.copy(img)[:,:,1])
+    g1[mk_a] = 0
+    gg = cp.zeros((img.shape[0]*2,img.shape[1]*2,img.shape[2]), dtype=cp.uint8)
+    gg[:,:,1] = stack_mono(g1)
+    gg[:,:,0] = gg[:,:,2] = cp.bitwise_not(gg[:,:,1])
+
+
+    b1 = to_rgba(cp.copy(img)[:,:,2])
+    b1[mk_a] = 0
+    bb = cp.zeros((img.shape[0]*2,img.shape[1]*2,img.shape[2]), dtype=cp.uint8)
+    bb[:,:,2] = stack_mono(b1)
+    bb[:,:,0] = bb[:,:,1] = cp.bitwise_not(bb[:,:,2])
+    
+    
+    rr[:,:,3]= gg[:,:,3] = bb[:,:,3] = 255
+    #gray[mk_a] = rr[mk_a] = gg[mk_a] = bb[mk_a] = 0
+
+    h1 = cp.hstack( (gray,rr) )
+    h2 = cp.hstack( (gg,bb) )
+    return cp.vstack( (h1 ,h2 ) )
+
+def too_much_info(img):
+    img[img[:,:,3] == 0] = [0,0,0,0]
+    big = resize_by_factor(cp.copy(img), 2)
+    smol = resize_by_factor(cp.copy(img), 0.5)    
+
+    h_half = img.shape[1] // 2
+    wrap_h = scimg.shift(cp.copy(img), (0,h_half,0), mode='wrap')
+    v_half = img.shape[0] // 2
+    wrap_v = scimg.shift(cp.copy(img), (v_half ,0,0), mode='wrap')
+    wrap_diag = scimg.shift(cp.copy(img), (v_half ,h_half,0), mode='wrap')
+
+    max_info = cp.zeros_like(big)
+
+
+    max_info[v_half:-v_half, :h_half] = wrap_h[:,:h_half]
+    max_info[v_half:-v_half, -h_half:] = wrap_h[:,h_half:]
+
+    max_info[:v_half, h_half:-h_half] = wrap_v[:v_half]
+    max_info[-v_half:, h_half:-h_half] = wrap_v[v_half:]
+
+    max_info[:v_half,:h_half] = wrap_diag[:v_half,:h_half]
+    max_info[-v_half:,-h_half:] = wrap_diag[v_half:,h_half:]
+    max_info[-v_half:,:h_half] = wrap_diag[v_half:,:h_half]
+    max_info[:v_half,-h_half:] = wrap_diag[:v_half,h_half:]
+
+    mka = big[:,:,3] == 255
+    
+    inv_big = cp.bitwise_not(big)
+    inv_big[:,:,3] = big[:,:,3]
+    
+    inv_big = cp.rot90(inv_big, k=2)
+    mkb = inv_big[:,:,3] == 255
+    
+    max_info[mkb] = inv_big[mkb]
+    max_info[mka] = big[mka]
+    mk_alpha = max_info[:,:,3] == 0
+    max_info[mk_alpha] = wallpaper(smol)[mk_alpha]
+    
+    
+    return max_info
